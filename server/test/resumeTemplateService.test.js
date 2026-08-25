@@ -23,6 +23,15 @@ describe('getResumeTemplateStatus', () => {
   it('reports no template configured initially', () => {
     expect(getResumeTemplateStatus(db)).toEqual({ hasTemplate: false, originalName: null, format: null });
   });
+
+  it('reports hasTemplate: false when the underlying file has been deleted', () => {
+    saveResumeTemplate(db, { originalname: 'resume.txt', size: 10, buffer: Buffer.from('hello') });
+    const info = getResumeTemplateInfo(db);
+    fs.unlinkSync(info.path);
+
+    const status = getResumeTemplateStatus(db);
+    expect(status.hasTemplate).toBe(false);
+  });
 });
 
 describe('saveResumeTemplate', () => {
@@ -43,6 +52,15 @@ describe('saveResumeTemplate', () => {
   });
 
   it('returns null from getResumeTemplateInfo when no template is set', () => {
+    expect(getResumeTemplateInfo(db)).toBeNull();
+  });
+
+  it('returns null from getResumeTemplateInfo when the underlying file has been deleted', () => {
+    const file = { originalname: 'resume.txt', size: 10, buffer: Buffer.from('hello') };
+    saveResumeTemplate(db, file);
+    const info = getResumeTemplateInfo(db);
+    fs.unlinkSync(info.path);
+
     expect(getResumeTemplateInfo(db)).toBeNull();
   });
 

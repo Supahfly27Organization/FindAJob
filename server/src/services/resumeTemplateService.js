@@ -23,7 +23,7 @@ function setSetting(db, key, value) {
 
 export function getResumeTemplateStatus(db) {
   return {
-    hasTemplate: Boolean(getSetting(db, NAME_KEY)),
+    hasTemplate: Boolean(getResumeTemplateInfo(db)),
     originalName: getSetting(db, NAME_KEY),
     format: getSetting(db, FORMAT_KEY)
   };
@@ -32,7 +32,7 @@ export function getResumeTemplateStatus(db) {
 export function getResumeTemplateInfo(db) {
   const filePath = getSetting(db, PATH_KEY);
   const format = getSetting(db, FORMAT_KEY);
-  if (!filePath || !format) {
+  if (!filePath || !format || !fs.existsSync(filePath)) {
     return null;
   }
   return { path: filePath, format };

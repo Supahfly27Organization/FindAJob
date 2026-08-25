@@ -4,7 +4,7 @@ import { createDb } from '../src/db/index.js';
 import { createPositionTitle } from '../src/services/positionTitleService.js';
 import { saveSearchResults } from '../src/services/postingService.js';
 import { saveOpenAiKey } from '../src/services/settingsService.js';
-import { saveResumeTemplate } from '../src/services/resumeTemplateService.js';
+import { saveResumeTemplate, getResumeTemplateInfo } from '../src/services/resumeTemplateService.js';
 import { adaptResumeForPosting } from '../src/services/resumeAdaptationService.js';
 import { ValidationError, UpstreamError, NotFoundError } from '../src/errors.js';
 import { RESUME_TEMPLATE_DIR, ADAPTED_RESUMES_DIR } from '../src/config.js';
@@ -34,6 +34,14 @@ describe('adaptResumeForPosting', () => {
 
   it('throws ValidationError when no resume template is configured', async () => {
     saveOpenAiKey(db, 'sk-test1234567890');
+    await expect(adaptResumeForPosting(db, posting.id)).rejects.toThrow(ValidationError);
+  });
+
+  it('throws ValidationError (not a generic error) when the configured template file has been deleted from disk', async () => {
+    saveOpenAiKey(db, 'sk-test1234567890');
+    saveResumeTemplate(db, { originalname: 'resume.txt', size: 10, buffer: Buffer.from('Jane Doe') });
+    fs.unlinkSync(getResumeTemplateInfo(db).path);
+
     await expect(adaptResumeForPosting(db, posting.id)).rejects.toThrow(ValidationError);
   });
 
