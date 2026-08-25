@@ -168,9 +168,9 @@ describe('PostingsPage', () => {
     renderPage();
     await screen.findByText('Senior PM');
 
-    await user.click(screen.getByRole('button', { name: /adapt my resume/i }));
+    await user.click(screen.getByRole('button', { name: /adapt resume for senior pm/i }));
 
-    expect(await screen.findByRole('link', { name: /download adapted resume/i })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /download adapted resume for senior pm/i })).toBeInTheDocument();
   });
 
   it('shows an error when adaptation fails', async () => {
@@ -183,7 +183,7 @@ describe('PostingsPage', () => {
     renderPage();
     await screen.findByText('Senior PM');
 
-    await user.click(screen.getByRole('button', { name: /adapt my resume/i }));
+    await user.click(screen.getByRole('button', { name: /adapt resume for senior pm/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Configure your resume template in Settings before adapting your resume.'
@@ -201,10 +201,31 @@ describe('PostingsPage', () => {
     renderPage();
     await screen.findByText('Senior PM');
 
-    await user.click(screen.getByRole('button', { name: /re-adapt resume/i }));
+    await user.click(screen.getByRole('button', { name: /adapt resume for senior pm/i }));
     expect(screen.getByText(/replace existing adapted resume/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /yes, replace/i }));
-    expect(await screen.findByRole('link', { name: /download adapted resume/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /yes, replace resume for senior pm/i }));
+    expect(await screen.findByRole('link', { name: /download adapted resume for senior pm/i })).toBeInTheDocument();
+  });
+
+  it('does not close an unrelated posting\'s replace-confirm when adapting a different posting', async () => {
+    const user = userEvent.setup();
+    const postingWithResume = { ...POSTING, id: 10, postingTitle: 'Senior PM', adaptedResumePath: '/data/adapted-resumes/posting-10.docx' };
+    const postingWithoutResume = { ...POSTING, id: 11, postingTitle: 'Junior PM', adaptedResumePath: null };
+    mockFetchSequence([
+      { status: 200, body: TITLES },
+      { status: 200, body: [postingWithResume, postingWithoutResume] },
+      { status: 200, body: { ...postingWithoutResume, adaptedResumePath: '/data/adapted-resumes/posting-11.docx' } }
+    ]);
+    renderPage();
+    await screen.findByText('Senior PM');
+
+    await user.click(screen.getByRole('button', { name: /adapt resume for senior pm/i }));
+    expect(screen.getByText(/replace existing adapted resume/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /adapt resume for junior pm/i }));
+
+    expect(screen.getByText(/replace existing adapted resume/i)).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /download adapted resume for junior pm/i })).toBeInTheDocument();
   });
 });

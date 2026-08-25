@@ -101,7 +101,7 @@ export default function PostingsPage() {
 
   async function performAdapt(posting: Posting) {
     setAdaptingId(posting.id);
-    setAdaptConfirmId(null);
+    setAdaptConfirmId((prev) => (prev === posting.id ? null : prev));
     setAdaptErrors((prev) => ({ ...prev, [posting.id]: '' }));
     try {
       const updated = await adaptResumeForPosting(posting.id);
@@ -215,7 +215,11 @@ export default function PostingsPage() {
                   <td>
                     {posting.adaptedResumePath && (
                       <div>
-                        <a href={`/api/postings/${posting.id}/adapted-resume`} download>
+                        <a
+                          href={`/api/postings/${posting.id}/adapted-resume`}
+                          download
+                          aria-label={`Download adapted resume for ${posting.postingTitle}`}
+                        >
                           Download adapted resume
                         </a>
                       </div>
@@ -223,11 +227,25 @@ export default function PostingsPage() {
                     {adaptConfirmId === posting.id ? (
                       <span>
                         Replace existing adapted resume?{' '}
-                        <button onClick={() => performAdapt(posting)}>Yes, replace</button>{' '}
-                        <button onClick={() => setAdaptConfirmId(null)}>Cancel</button>
+                        <button
+                          onClick={() => performAdapt(posting)}
+                          aria-label={`Yes, replace resume for ${posting.postingTitle}`}
+                        >
+                          Yes, replace
+                        </button>{' '}
+                        <button
+                          onClick={() => setAdaptConfirmId(null)}
+                          aria-label={`Cancel replacing resume for ${posting.postingTitle}`}
+                        >
+                          Cancel
+                        </button>
                       </span>
                     ) : (
-                      <button onClick={() => handleAdaptClick(posting)} disabled={adaptingId === posting.id}>
+                      <button
+                        onClick={() => handleAdaptClick(posting)}
+                        disabled={adaptingId === posting.id}
+                        aria-label={`Adapt resume for ${posting.postingTitle}`}
+                      >
                         {adaptingId === posting.id
                           ? 'Adapting…'
                           : posting.adaptedResumePath
