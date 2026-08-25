@@ -7,7 +7,7 @@ import {
   fetchPositionTitles,
   updatePositionTitle
 } from '../api/positionTitles';
-import { searchPostingsForTitle } from '../api/postings';
+import { searchPostingsForTitle, type SearchResult } from '../api/postings';
 import { ApiError } from '../api/http';
 
 type SearchState = 'idle' | 'searching' | 'done' | 'error';
@@ -29,6 +29,8 @@ export default function PositionTitlesPage() {
 
   const [searchState, setSearchState] = useState<Record<number, SearchState>>({});
   const [searchErrors, setSearchErrors] = useState<Record<number, string>>({});
+  const [searchResults, setSearchResults] = useState<Record<number, SearchResult>>({});
+  const [searchingAll, setSearchingAll] = useState(false);
 
   async function loadTitles() {
     setLoading(true);
@@ -99,9 +101,15 @@ export default function PositionTitlesPage() {
       delete next[titleId];
       return next;
     });
+    setSearchResults((prev) => {
+      const next = { ...prev };
+      delete next[titleId];
+      return next;
+    });
     try {
-      await searchPostingsForTitle(titleId);
+      const result = await searchPostingsForTitle(titleId);
       setSearchState((prev) => ({ ...prev, [titleId]: 'done' }));
+      setSearchResults((prev) => ({ ...prev, [titleId]: result }));
       await loadTitles();
     } catch (error) {
       setSearchState((prev) => ({ ...prev, [titleId]: 'error' }));
@@ -113,9 +121,28 @@ export default function PositionTitlesPage() {
   }
 
   async function handleSearchAll() {
-    for (const title of titles) {
-      await runSearch(title.id);
+    setSearchingAll(true);
+    try {
+      for (const title of titles) {
+        await runSearch(title.id);
+      }
+    } finally {
+      setSearchingAll(false);
     }
+  }
+
+  function searchResultMessage(titleId: number): string {
+    const result = searchResults[titleId];
+    if (!result) {
+      return '';
+    }
+    if (result.totalFound === 0) {
+      return 'No matching postings found in the last 45 days.';
+    }
+    if (result.savedCount === 0) {
+      return 'No new postings — all were already in your list.';
+    }
+    return `${result.savedCount} new posting${result.savedCount === 1 ? '' : 's'} found.`;
   }
 
   if (loading) {
@@ -137,7 +164,7 @@ export default function PositionTitlesPage() {
         {addError && <p role="alert">{addError}</p>}
       </form>
 
-      <button onClick={handleSearchAll} disabled={titles.length === 0}>
+      <button onClick={handleSearchAll} disabled={searchingAll || titles.length === 0}>
         Search all
       </button>
 
@@ -201,11 +228,12 @@ export default function PositionTitlesPage() {
                       </button>
                       <button
                         onClick={() => runSearch(title.id)}
-                        disabled={searchState[title.id] === 'searching'}
+                        disabled={searchingAll || searchState[title.id] === 'searching'}
                       >
                         {searchState[title.id] === 'searching' ? 'Searching…' : 'Search now'}
                       </button>
                       <Link to={`/titles/${title.id}/postings`}>View postings</Link>
+                      {searchState[title.id] === 'done' && <span>{searchResultMessage(title.id)}</span>}
                       {searchState[title.id] === 'error' && (
                         <>
                           <span role="alert">{searchErrors[title.id]}</span>

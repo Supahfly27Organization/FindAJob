@@ -39,6 +39,16 @@ describe('searchPostingsForTitle', () => {
     await expect(searchPostingsForTitle(db, title.id, { fetchPostings })).rejects.toThrow(UpstreamError);
   });
 
+  it('reports a rejected API key as a ValidationError instead of a generic UpstreamError', async () => {
+    saveOpenAiKey(db, 'sk-test1234567890');
+    const authError = new Error('Incorrect API key provided');
+    authError.status = 401;
+    const fetchPostings = vi.fn().mockRejectedValue(authError);
+
+    await expect(searchPostingsForTitle(db, title.id, { fetchPostings })).rejects.toThrow(ValidationError);
+    await expect(searchPostingsForTitle(db, title.id, { fetchPostings })).rejects.toThrow(/rejected/i);
+  });
+
   it('throws NotFoundError for a missing position title', async () => {
     saveOpenAiKey(db, 'sk-test1234567890');
     await expect(searchPostingsForTitle(db, 999, { fetchPostings: vi.fn() })).rejects.toThrow(

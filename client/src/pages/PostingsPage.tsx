@@ -57,8 +57,12 @@ export default function PostingsPage() {
     setSearchInfo(null);
     try {
       const result = await searchPostingsForTitle(positionTitleId);
-      if (result.savedCount === 0) {
+      if (result.totalFound === 0) {
         setSearchInfo('No matching postings found in the last 45 days.');
+      } else if (result.savedCount === 0) {
+        setSearchInfo(
+          `No new postings — all ${result.totalFound} result${result.totalFound === 1 ? '' : 's'} were already in your list.`
+        );
       }
       await load();
     } catch (error) {

@@ -28,7 +28,7 @@ function isValidCandidate(candidate) {
   return (
     candidate &&
     typeof candidate.url === 'string' &&
-    candidate.url.trim() &&
+    /^https?:\/\//i.test(candidate.url.trim()) &&
     typeof candidate.postingTitle === 'string' &&
     candidate.postingTitle.trim()
   );

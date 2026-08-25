@@ -90,6 +90,25 @@ describe('PostingsPage', () => {
     expect(await screen.findByText(/no matching postings found in the last 45 days/i)).toBeInTheDocument();
   });
 
+  it('reports all-duplicates distinctly from zero matches', async () => {
+    const user = userEvent.setup();
+    mockFetchSequence([
+      { status: 200, body: TITLES },
+      { status: 200, body: [] },
+      { status: 200, body: { totalFound: 2, savedCount: 0 } },
+      { status: 200, body: TITLES },
+      { status: 200, body: [] }
+    ]);
+    renderPage();
+    await screen.findByText(/no postings found yet/i);
+
+    await user.click(screen.getByRole('button', { name: /search now/i }));
+
+    expect(
+      await screen.findByText('No new postings — all 2 results were already in your list.')
+    ).toBeInTheDocument();
+  });
+
   it('shows a search error', async () => {
     const user = userEvent.setup();
     mockFetchSequence([

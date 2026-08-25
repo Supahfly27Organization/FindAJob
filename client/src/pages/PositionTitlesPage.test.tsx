@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import PositionTitlesPage from './PositionTitlesPage';
@@ -138,6 +138,24 @@ describe('PositionTitlesPage', () => {
     await user.click(screen.getByRole('button', { name: /search now/i }));
 
     expect(await screen.findByText('2')).toBeInTheDocument();
+    expect(await screen.findByText('2 new postings found.')).toBeInTheDocument();
+  });
+
+  it('shows an inline message when a search finds zero matching postings', async () => {
+    const user = userEvent.setup();
+    mockFetchSequence([
+      { status: 200, body: [{ id: 1, title: 'QA Engineer', createdAt: '', postingCount: 0 }] },
+      { status: 200, body: { totalFound: 0, savedCount: 0 } },
+      { status: 200, body: [{ id: 1, title: 'QA Engineer', createdAt: '', postingCount: 0 }] }
+    ]);
+    renderPage();
+    await screen.findByText('QA Engineer');
+
+    await user.click(screen.getByRole('button', { name: /search now/i }));
+
+    expect(
+      await screen.findByText('No matching postings found in the last 45 days.')
+    ).toBeInTheDocument();
   });
 
   it('shows a retry option when a search fails', async () => {
@@ -199,5 +217,57 @@ describe('PositionTitlesPage', () => {
 
     const counts = await screen.findAllByText('1');
     expect(counts).toHaveLength(2);
+  });
+
+  it('disables "Search all" and every row\'s "Search now" while a search-all run is in progress', async () => {
+    const user = userEvent.setup();
+    const titlesBody = [
+      { id: 1, title: 'QA Engineer', createdAt: '', postingCount: 0 },
+      { id: 2, title: 'Product Manager', createdAt: '', postingCount: 0 }
+    ];
+
+    let resolveSearch!: (response: { status: number; body: unknown }) => void;
+    const pendingSearch = new Promise<{ status: number; body: unknown }>((resolve) => {
+      resolveSearch = resolve;
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        const method = init?.method ?? 'GET';
+        if (method === 'POST' && url.includes('/search')) {
+          const response = await pendingSearch;
+          return {
+            ok: response.status < 400,
+            status: response.status,
+            json: async () => response.body
+          } as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => titlesBody
+        } as Response;
+      })
+    );
+
+    renderPage();
+    await screen.findByText('QA Engineer');
+
+    await user.click(screen.getByRole('button', { name: /search all/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /search all/i })).toBeDisabled();
+    });
+    const searchNowButtons = screen.getAllByRole('button', { name: /search now|searching/i });
+    expect(searchNowButtons).toHaveLength(2);
+    searchNowButtons.forEach((button) => expect(button).toBeDisabled());
+
+    resolveSearch({ status: 200, body: { totalFound: 1, savedCount: 1 } });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /search all/i })).not.toBeDisabled();
+    });
   });
 });

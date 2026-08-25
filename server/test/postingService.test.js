@@ -42,6 +42,14 @@ describe('saveSearchResults', () => {
     expect(listPostingsForTitle(db, title.id)).toHaveLength(0);
   });
 
+  it('discards candidates with a non-http(s) URL scheme', () => {
+    const result = saveSearchResults(db, title.id, [
+      { postingTitle: 'Malicious Role', url: 'javascript:alert(1)', publishedDate: '2026-08-01' }
+    ]);
+    expect(result.savedCount).toBe(0);
+    expect(listPostingsForTitle(db, title.id)).toHaveLength(0);
+  });
+
   it('discards candidates missing a posting title', () => {
     const result = saveSearchResults(db, title.id, [
       { url: 'https://example.com/job/no-title', publishedDate: '2026-08-01' }

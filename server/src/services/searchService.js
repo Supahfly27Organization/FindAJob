@@ -15,7 +15,11 @@ export async function searchPostingsForTitle(db, positionTitleId, { fetchPosting
   let candidates;
   try {
     candidates = await fetchPostings(apiKey, title.title);
-  } catch {
+  } catch (error) {
+    console.error('[search] OpenAI call failed for position title', positionTitleId, error);
+    if (error?.status === 401) {
+      throw new ValidationError('Your OpenAI API key was rejected. Update it in Settings.');
+    }
     throw new UpstreamError('Search failed. Please try again.');
   }
 
