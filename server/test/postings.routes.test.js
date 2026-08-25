@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import { createApp, errorHandler } from '../src/app.js';
 import { createDb } from '../src/db/index.js';
@@ -8,10 +8,12 @@ import { registerPostingRoutes } from '../src/routes/postings.js';
 
 vi.mock('../src/services/openaiClient.js', async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, searchJobPostings: vi.fn() };
+  return { ...actual, searchJobPostings: vi.fn(), adaptResumeText: vi.fn() };
 });
 
-import { searchJobPostings } from '../src/services/openaiClient.js';
+import { searchJobPostings, adaptResumeText } from '../src/services/openaiClient.js';
+import fs from 'node:fs';
+import { RESUME_TEMPLATE_DIR, ADAPTED_RESUMES_DIR } from '../src/config.js';
 
 let app;
 
@@ -23,6 +25,7 @@ beforeEach(() => {
   registerPostingRoutes(app, db);
   app.use(errorHandler);
   vi.mocked(searchJobPostings).mockReset();
+  vi.mocked(adaptResumeText).mockReset();
 });
 
 async function createTitle(title) {
@@ -32,6 +35,18 @@ async function createTitle(title) {
 
 async function configureApiKey() {
   await request(app).put('/api/settings/openai-key').send({ apiKey: 'sk-test1234567890' });
+}
+
+async function createPostingWithTemplate() {
+  const title = await createTitle('Product Manager');
+  await configureApiKey();
+  vi.mocked(searchJobPostings).mockResolvedValue([
+    { postingTitle: 'Senior PM', url: 'https://example.com/job/1' }
+  ]);
+  await request(app).post(`/api/position-titles/${title.id}/search`);
+  const [posting] = (await request(app).get(`/api/position-titles/${title.id}/postings`)).body;
+  await request(app).post('/api/settings/resume-template').attach('file', Buffer.from('Jane Doe'), 'resume.txt');
+  return posting;
 }
 
 describe('POST /api/position-titles/:id/search', () => {
@@ -139,6 +154,72 @@ describe('PUT /api/postings/:id/status', () => {
 
   it('returns 404 for a missing posting', async () => {
     const response = await request(app).put('/api/postings/999/status').send({ status: 'Rejected' });
+    expect(response.status).toBe(404);
+  });
+});
+
+describe('POST /api/postings/:id/adapt-resume', () => {
+  afterEach(() => {
+    fs.rmSync(RESUME_TEMPLATE_DIR, { recursive: true, force: true });
+    fs.rmSync(ADAPTED_RESUMES_DIR, { recursive: true, force: true });
+  });
+
+  it('adapts and saves a resume for a posting', async () => {
+    const posting = await createPostingWithTemplate();
+    vi.mocked(adaptResumeText).mockResolvedValue({
+      adaptedResumeText: 'Jane Doe, tailored',
+      originalPositionCount: 1,
+      retainedPositionCount: 1
+    });
+
+    const response = await request(app).post(`/api/postings/${posting.id}/adapt-resume`);
+    expect(response.status).toBe(200);
+    expect(response.body.adaptedResumePath).toMatch(/posting-\d+\.txt$/);
+  });
+
+  it('rejects when no resume template is configured', async () => {
+    const title = await createTitle('Product Manager');
+    await configureApiKey();
+    vi.mocked(searchJobPostings).mockResolvedValue([
+      { postingTitle: 'Senior PM', url: 'https://example.com/job/1' }
+    ]);
+    await request(app).post(`/api/position-titles/${title.id}/search`);
+    const [posting] = (await request(app).get(`/api/position-titles/${title.id}/postings`)).body;
+
+    const response = await request(app).post(`/api/postings/${posting.id}/adapt-resume`);
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 404 for a missing posting', async () => {
+    await request(app).post('/api/settings/resume-template').attach('file', Buffer.from('Jane Doe'), 'resume.txt');
+    const response = await request(app).post('/api/postings/999/adapt-resume');
+    expect(response.status).toBe(404);
+  });
+});
+
+describe('GET /api/postings/:id/adapted-resume', () => {
+  afterEach(() => {
+    fs.rmSync(RESUME_TEMPLATE_DIR, { recursive: true, force: true });
+    fs.rmSync(ADAPTED_RESUMES_DIR, { recursive: true, force: true });
+  });
+
+  it('downloads the adapted resume file', async () => {
+    const posting = await createPostingWithTemplate();
+    vi.mocked(adaptResumeText).mockResolvedValue({
+      adaptedResumeText: 'Jane Doe, tailored',
+      originalPositionCount: 1,
+      retainedPositionCount: 1
+    });
+    await request(app).post(`/api/postings/${posting.id}/adapt-resume`);
+
+    const response = await request(app).get(`/api/postings/${posting.id}/adapted-resume`);
+    expect(response.status).toBe(200);
+    expect(response.text).toBe('Jane Doe, tailored');
+  });
+
+  it('returns 404 when no adapted resume exists yet', async () => {
+    const posting = await createPostingWithTemplate();
+    const response = await request(app).get(`/api/postings/${posting.id}/adapted-resume`);
     expect(response.status).toBe(404);
   });
 });
