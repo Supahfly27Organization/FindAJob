@@ -27,3 +27,7 @@ export function updatePostingStatus(id: number, status: string): Promise<Posting
     body: JSON.stringify({ status })
   });
 }
+
+export function adaptResumeForPosting(id: number): Promise<Posting> {
+  return apiFetch<Posting>(`/api/postings/${id}/adapt-resume`, { method: 'POST' });
+}

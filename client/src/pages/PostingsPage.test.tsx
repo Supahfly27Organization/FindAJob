@@ -157,4 +157,54 @@ describe('PostingsPage', () => {
 
     expect(await screen.findByDisplayValue('In Progress')).toBeInTheDocument();
   });
+
+  it('generates an adapted resume and shows a download link', async () => {
+    const user = userEvent.setup();
+    mockFetchSequence([
+      { status: 200, body: TITLES },
+      { status: 200, body: [POSTING] },
+      { status: 200, body: { ...POSTING, adaptedResumePath: '/data/adapted-resumes/posting-10.docx' } }
+    ]);
+    renderPage();
+    await screen.findByText('Senior PM');
+
+    await user.click(screen.getByRole('button', { name: /adapt my resume/i }));
+
+    expect(await screen.findByRole('link', { name: /download adapted resume/i })).toBeInTheDocument();
+  });
+
+  it('shows an error when adaptation fails', async () => {
+    const user = userEvent.setup();
+    mockFetchSequence([
+      { status: 200, body: TITLES },
+      { status: 200, body: [POSTING] },
+      { status: 400, body: { message: 'Configure your resume template in Settings before adapting your resume.' } }
+    ]);
+    renderPage();
+    await screen.findByText('Senior PM');
+
+    await user.click(screen.getByRole('button', { name: /adapt my resume/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Configure your resume template in Settings before adapting your resume.'
+    );
+  });
+
+  it('confirms before replacing an existing adapted resume', async () => {
+    const user = userEvent.setup();
+    const postingWithResume = { ...POSTING, adaptedResumePath: '/data/adapted-resumes/posting-10.docx' };
+    mockFetchSequence([
+      { status: 200, body: TITLES },
+      { status: 200, body: [postingWithResume] },
+      { status: 200, body: postingWithResume }
+    ]);
+    renderPage();
+    await screen.findByText('Senior PM');
+
+    await user.click(screen.getByRole('button', { name: /re-adapt resume/i }));
+    expect(screen.getByText(/replace existing adapted resume/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /yes, replace/i }));
+    expect(await screen.findByRole('link', { name: /download adapted resume/i })).toBeInTheDocument();
+  });
 });

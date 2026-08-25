@@ -6,7 +6,8 @@ import {
   fetchPostingsForTitle,
   markPostingViewed,
   searchPostingsForTitle,
-  updatePostingStatus
+  updatePostingStatus,
+  adaptResumeForPosting
 } from '../api/postings';
 import { ApiError } from '../api/http';
 
@@ -29,6 +30,10 @@ export default function PostingsPage() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+
+  const [adaptingId, setAdaptingId] = useState<number | null>(null);
+  const [adaptConfirmId, setAdaptConfirmId] = useState<number | null>(null);
+  const [adaptErrors, setAdaptErrors] = useState<Record<number, string>>({});
 
   async function load() {
     setLoading(true);
@@ -94,6 +99,31 @@ export default function PostingsPage() {
     }
   }
 
+  async function performAdapt(posting: Posting) {
+    setAdaptingId(posting.id);
+    setAdaptConfirmId(null);
+    setAdaptErrors((prev) => ({ ...prev, [posting.id]: '' }));
+    try {
+      const updated = await adaptResumeForPosting(posting.id);
+      setPostings((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    } catch (error) {
+      setAdaptErrors((prev) => ({
+        ...prev,
+        [posting.id]: error instanceof ApiError ? error.message : 'Failed to adapt resume'
+      }));
+    } finally {
+      setAdaptingId(null);
+    }
+  }
+
+  function handleAdaptClick(posting: Posting) {
+    if (posting.adaptedResumePath) {
+      setAdaptConfirmId(posting.id);
+      return;
+    }
+    performAdapt(posting);
+  }
+
   if (loading) {
     return <p>Loading postings…</p>;
   }
@@ -139,6 +169,7 @@ export default function PostingsPage() {
               <th>Company</th>
               <th>Location</th>
               <th>Actions</th>
+              <th>Resume</th>
             </tr>
           </thead>
           <tbody>
@@ -180,6 +211,31 @@ export default function PostingsPage() {
                   <td>{posting.location ?? '—'}</td>
                   <td>
                     <button onClick={() => handleOpen(posting)}>Open</button>
+                  </td>
+                  <td>
+                    {posting.adaptedResumePath && (
+                      <div>
+                        <a href={`/api/postings/${posting.id}/adapted-resume`} download>
+                          Download adapted resume
+                        </a>
+                      </div>
+                    )}
+                    {adaptConfirmId === posting.id ? (
+                      <span>
+                        Replace existing adapted resume?{' '}
+                        <button onClick={() => performAdapt(posting)}>Yes, replace</button>{' '}
+                        <button onClick={() => setAdaptConfirmId(null)}>Cancel</button>
+                      </span>
+                    ) : (
+                      <button onClick={() => handleAdaptClick(posting)} disabled={adaptingId === posting.id}>
+                        {adaptingId === posting.id
+                          ? 'Adapting…'
+                          : posting.adaptedResumePath
+                            ? 'Re-adapt resume'
+                            : 'Adapt my resume'}
+                      </button>
+                    )}
+                    {adaptErrors[posting.id] && <p role="alert">{adaptErrors[posting.id]}</p>}
                   </td>
                 </tr>
               );
