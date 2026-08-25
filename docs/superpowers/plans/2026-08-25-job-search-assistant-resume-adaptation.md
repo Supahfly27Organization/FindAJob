@@ -370,7 +370,7 @@ Expected: FAIL — `Cannot find module '../src/services/resumeExtractionService.
 ```js
 import fs from 'node:fs/promises';
 import mammoth from 'mammoth';
-import pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 
 export async function extractResumeText(filePath, format) {
   if (format === 'docx') {
@@ -379,13 +379,20 @@ export async function extractResumeText(filePath, format) {
   }
   if (format === 'pdf') {
     const buffer = await fs.readFile(filePath);
-    const data = await pdfParse(buffer);
-    return data.text.trim();
+    const parser = new PDFParse({ data: buffer });
+    try {
+      const result = await parser.getText();
+      return result.text.trim();
+    } finally {
+      await parser.destroy();
+    }
   }
   const text = await fs.readFile(filePath, 'utf-8');
   return text.trim();
 }
 ```
+
+**Note on `pdf-parse`:** the installed version is the v2 API (`PDFParse` class with `getText()`/`destroy()`), not the older v1 single-function API (`pdf(buffer) => {text}`) that older examples online show. Verified directly against the installed package during plan pre-flight — use the class-based API above as written, not the v1 shape.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
