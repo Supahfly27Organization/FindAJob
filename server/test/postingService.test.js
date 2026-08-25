@@ -58,7 +58,7 @@ describe('saveSearchResults', () => {
     expect(posting.aggregatorUrl).toBeNull();
   });
 
-  it('treats a different URL as a duplicate when company/title/location and description all match closely', () => {
+  it('treats a different URL as a duplicate when the descriptions match closely, regardless of company/title/location', () => {
     saveSearchResults(db, title.id, [
       {
         postingTitle: 'Senior Product Manager',
@@ -71,11 +71,11 @@ describe('saveSearchResults', () => {
 
     const result = saveSearchResults(db, title.id, [
       {
-        postingTitle: 'Senior Product Manager',
+        postingTitle: 'Head of Product',
         description: 'Own the roadmap for our core platform, leading a team of 5 engineers.',
-        company: 'Acme',
+        company: 'Some Recruiter',
         url: 'https://careers.acme.com/jobs/senior-pm',
-        location: 'Tel Aviv, Israel'
+        location: 'Modi\'in'
       }
     ]);
 
@@ -83,7 +83,7 @@ describe('saveSearchResults', () => {
     expect(listPostingsForTitle(db, title.id)).toHaveLength(1);
   });
 
-  it('does not treat matching company/title/location as a duplicate when descriptions differ', () => {
+  it('does not treat the same company/title/location as a duplicate when descriptions differ', () => {
     saveSearchResults(db, title.id, [
       {
         postingTitle: 'Senior Product Manager',
@@ -100,32 +100,6 @@ describe('saveSearchResults', () => {
         description: 'Lead our data platform team building the analytics warehouse.',
         company: 'Acme',
         url: 'https://careers.acme.com/jobs/senior-pm-2',
-        location: 'Tel Aviv'
-      }
-    ]);
-
-    expect(result.savedCount).toBe(1);
-    expect(listPostingsForTitle(db, title.id)).toHaveLength(2);
-  });
-
-  it('does not treat postings at different companies as duplicates even with matching title/location/description', () => {
-    const description = 'Own the roadmap for our core platform and lead a team of five engineers.';
-    saveSearchResults(db, title.id, [
-      {
-        postingTitle: 'Senior Product Manager',
-        description,
-        company: 'Acme',
-        url: 'https://www.linkedin.com/jobs/view/senior-product-manager-1234567890',
-        location: 'Tel Aviv'
-      }
-    ]);
-
-    const result = saveSearchResults(db, title.id, [
-      {
-        postingTitle: 'Senior Product Manager',
-        description,
-        company: 'Wixel',
-        url: 'https://careers.wixel.com/jobs/senior-pm',
         location: 'Tel Aviv'
       }
     ]);
