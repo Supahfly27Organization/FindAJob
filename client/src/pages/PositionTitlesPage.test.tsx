@@ -43,7 +43,7 @@ describe('PositionTitlesPage', () => {
     const user = userEvent.setup();
     mockFetchSequence([
       { status: 200, body: [] },
-      { status: 201, body: { id: 1, title: 'QA Engineer', createdAt: '', postingCount: 0 } },
+      { status: 201, body: { id: 1, title: 'QA Engineer', createdAt: '' } },
       { status: 200, body: [{ id: 1, title: 'QA Engineer', createdAt: '', postingCount: 0 }] }
     ]);
     render(<PositionTitlesPage />);
@@ -86,5 +86,20 @@ describe('PositionTitlesPage', () => {
     await user.click(screen.getByRole('button', { name: /confirm/i }));
 
     expect(await screen.findByText(/no position titles yet/i)).toBeInTheDocument();
+  });
+
+  it('shows an error when deleting fails', async () => {
+    const user = userEvent.setup();
+    mockFetchSequence([
+      { status: 200, body: [{ id: 1, title: 'QA Engineer', createdAt: '', postingCount: 0 }] },
+      { status: 500, body: { message: 'Failed to delete title' } }
+    ]);
+    render(<PositionTitlesPage />);
+    await screen.findByText('QA Engineer');
+
+    await user.click(screen.getByRole('button', { name: /delete/i }));
+    await user.click(screen.getByRole('button', { name: /confirm/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to delete title');
   });
 });

@@ -21,6 +21,7 @@ export default function PositionTitlesPage() {
   const [editError, setEditError] = useState<string | null>(null);
 
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function loadTitles() {
     setLoading(true);
@@ -74,9 +75,14 @@ export default function PositionTitlesPage() {
   }
 
   async function confirmDelete(id: number) {
-    await deletePositionTitle(id);
-    setConfirmingDeleteId(null);
-    await loadTitles();
+    setDeleteError(null);
+    try {
+      await deletePositionTitle(id);
+      setConfirmingDeleteId(null);
+      await loadTitles();
+    } catch (error) {
+      setDeleteError(error instanceof ApiError ? error.message : 'Failed to delete title');
+    }
   }
 
   if (loading) {
@@ -143,11 +149,19 @@ export default function PositionTitlesPage() {
                       </span>
                       <button onClick={() => confirmDelete(title.id)}>Confirm</button>
                       <button onClick={() => setConfirmingDeleteId(null)}>Cancel</button>
+                      {deleteError && <p role="alert">{deleteError}</p>}
                     </>
                   ) : (
                     <>
                       <button onClick={() => startEditing(title)}>Edit</button>
-                      <button onClick={() => setConfirmingDeleteId(title.id)}>Delete</button>
+                      <button
+                        onClick={() => {
+                          setDeleteError(null);
+                          setConfirmingDeleteId(title.id);
+                        }}
+                      >
+                        Delete
+                      </button>
                     </>
                   )}
                 </td>

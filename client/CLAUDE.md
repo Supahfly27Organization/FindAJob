@@ -1,7 +1,7 @@
 # client/ — FindAJob UI
 
 ## Architecture
-- React 18 + TypeScript, built with Vite. `react-router-dom` for client-side routing (`/titles`, `/settings`).
+- React 19 + TypeScript 6, built with Vite 8. `react-router-dom` for client-side routing (`/titles`, `/settings`).
 - `src/api/http.ts` — `apiFetch<T>()` wraps `fetch`, throws `ApiError` (carries `.status`) on non-2xx responses. All other `src/api/*.ts` modules are thin, typed wrappers around it — one file per backend resource.
 - `src/pages/*.tsx` — one page per route, each owning its own data fetching/state (no global state library; this app doesn't need one).
 - In dev, Vite's dev server (port 5173) proxies `/api/*` to the Express server (port 4000) — see `vite.config.ts`. In production the built app is served by that same Express server, so `fetch('/api/...')` works unchanged in both modes.

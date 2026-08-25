@@ -6,10 +6,16 @@ export default function SettingsPage() {
   const [status, setStatus] = useState<OpenAiKeyStatus | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function loadStatus() {
-    setStatus(await fetchOpenAiKeyStatus());
+    setLoadError(null);
+    try {
+      setStatus(await fetchOpenAiKeyStatus());
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : 'Failed to load API key status');
+    }
   }
 
   useEffect(() => {
@@ -34,6 +40,8 @@ export default function SettingsPage() {
   return (
     <section>
       <h1>Settings</h1>
+
+      {loadError && <p role="alert">{loadError}</p>}
 
       <h2>OpenAI API key</h2>
       {status?.hasKey ? (

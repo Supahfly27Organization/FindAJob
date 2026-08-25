@@ -61,4 +61,11 @@ describe('SettingsPage', () => {
       'That does not look like a valid OpenAI API key'
     );
   });
+
+  it('shows an error when the initial status fetch fails', async () => {
+    mockFetchSequence([{ status: 500, body: { message: 'Failed to load API key status' } }]);
+    render(<SettingsPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load API key status');
+  });
 });

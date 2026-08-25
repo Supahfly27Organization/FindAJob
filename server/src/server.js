@@ -16,15 +16,17 @@ registerSettingsRoutes(app, db);
 
 if (fs.existsSync(CLIENT_DIST_PATH)) {
   app.use(express.static(CLIENT_DIST_PATH));
-  app.get(/^\/(?!api).*/, (req, res) => {
+  app.get(/^\/(?!api\/)/, (req, res) => {
     res.sendFile(path.join(CLIENT_DIST_PATH, 'index.html'));
   });
 }
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
   const url = `http://localhost:${PORT}`;
   console.log(`FindAJob running at ${url}`);
-  open(url).catch(() => {});
+  if (!process.argv.includes('--no-open')) {
+    open(url).catch(() => {});
+  }
 });
