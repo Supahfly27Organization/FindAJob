@@ -13,3 +13,11 @@ export class NotFoundError extends Error {
     this.status = 404;
   }
 }
+
+export class UpstreamError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'UpstreamError';
+    this.status = 502;
+  }
+}
