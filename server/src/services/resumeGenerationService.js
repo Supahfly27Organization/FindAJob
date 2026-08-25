@@ -5,7 +5,7 @@ import { Document, Packer, Paragraph } from 'docx';
 import PDFDocument from 'pdfkit';
 
 async function generateDocx(text, outputPath) {
-  const paragraphs = text.split('\n').map((line) => new Paragraph(line));
+  const paragraphs = text.split(/\r?\n/).map((line) => new Paragraph(line));
   const doc = new Document({ sections: [{ children: paragraphs }] });
   const buffer = await Packer.toBuffer(doc);
   await fsp.writeFile(outputPath, buffer);
@@ -19,7 +19,7 @@ function generatePdf(text, outputPath) {
     doc.on('error', reject);
     stream.on('finish', resolve);
     stream.on('error', reject);
-    for (const line of text.split('\n')) {
+    for (const line of text.split(/\r?\n/)) {
       doc.text(line);
     }
     doc.end();

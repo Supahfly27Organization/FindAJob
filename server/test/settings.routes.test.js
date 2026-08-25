@@ -67,4 +67,12 @@ describe('POST /api/settings/resume-template', () => {
       .attach('file', Buffer.from('x'), 'resume.pages');
     expect(response.status).toBe(400);
   });
+
+  it('rejects a Multer error other than LIMIT_FILE_SIZE (e.g. wrong form field name) with a ValidationError, not a 500', async () => {
+    const response = await request(app)
+      .post('/api/settings/resume-template')
+      .attach('wrongFieldName', Buffer.from('Jane Doe'), 'resume.txt');
+    expect(response.status).toBe(400);
+    expect(response.body.message).toMatch(/could not process the uploaded file/i);
+  });
 });

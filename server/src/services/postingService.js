@@ -98,6 +98,10 @@ export function markPostingViewed(db, id) {
   return getPostingById(db, id);
 }
 
+export function setAdaptedResumePath(db, id, path) {
+  db.prepare('UPDATE postings SET adapted_resume_path = ? WHERE id = ?').run(path, id);
+}
+
 export function updatePostingStatus(db, id, status) {
   getPostingById(db, id);
   if (!EDITABLE_STATUSES.includes(status)) {

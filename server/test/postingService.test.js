@@ -6,7 +6,8 @@ import {
   listPostingsForTitle,
   getPostingById,
   markPostingViewed,
-  updatePostingStatus
+  updatePostingStatus,
+  setAdaptedResumePath
 } from '../src/services/postingService.js';
 import { ValidationError, NotFoundError } from '../src/errors.js';
 
@@ -159,6 +160,17 @@ describe('updatePostingStatus', () => {
 
   it('throws NotFoundError for a missing posting', () => {
     expect(() => updatePostingStatus(db, 999, 'Rejected')).toThrow(NotFoundError);
+  });
+});
+
+describe('setAdaptedResumePath', () => {
+  it('sets the adapted resume path on the posting', () => {
+    saveSearchResults(db, title.id, [{ postingTitle: 'A', url: 'https://example.com/a' }]);
+    const [posting] = listPostingsForTitle(db, title.id);
+
+    setAdaptedResumePath(db, posting.id, '/data/adapted-resumes/posting-1.txt');
+
+    expect(getPostingById(db, posting.id).adaptedResumePath).toBe('/data/adapted-resumes/posting-1.txt');
   });
 });
 

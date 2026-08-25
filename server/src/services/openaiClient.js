@@ -62,7 +62,10 @@ ${templateText}
 TARGET JOB POSTING:
 Title: ${posting.postingTitle}
 Company: ${posting.company ?? 'Unknown'}
-Description: ${posting.description ?? 'No description provided'}
+Description:
+"""
+${posting.description ?? 'No description provided'}
+"""
 
 Rules:
 - Do NOT invent any experience, skill, or qualification that is not already present in the resume template above.
@@ -97,8 +100,8 @@ export function parseAdaptationResponse(rawText) {
   if (
     !parsed ||
     typeof parsed.adaptedResumeText !== 'string' ||
-    typeof parsed.originalPositionCount !== 'number' ||
-    typeof parsed.retainedPositionCount !== 'number'
+    !Number.isFinite(parsed.originalPositionCount) ||
+    !Number.isFinite(parsed.retainedPositionCount)
   ) {
     throw new Error('OpenAI response was missing required fields');
   }

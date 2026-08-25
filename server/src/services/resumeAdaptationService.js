@@ -2,7 +2,7 @@ import path from 'node:path';
 import { ValidationError, UpstreamError } from '../errors.js';
 import { getOpenAiKey } from './settingsService.js';
 import { getResumeTemplateInfo } from './resumeTemplateService.js';
-import { getPostingById } from './postingService.js';
+import { getPostingById, setAdaptedResumePath } from './postingService.js';
 import { extractResumeText } from './resumeExtractionService.js';
 import { generateResumeDocument } from './resumeGenerationService.js';
 import { adaptResumeText } from './openaiClient.js';
@@ -43,6 +43,6 @@ export async function adaptResumeForPosting(db, postingId, { adaptResume = adapt
   const outputPath = path.join(ADAPTED_RESUMES_DIR, `posting-${postingId}.${template.format}`);
   await generateResumeDocument(result.adaptedResumeText, template.format, outputPath);
 
-  db.prepare('UPDATE postings SET adapted_resume_path = ? WHERE id = ?').run(outputPath, postingId);
+  setAdaptedResumePath(db, postingId, outputPath);
   return getPostingById(db, postingId);
 }

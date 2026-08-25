@@ -77,4 +77,20 @@ describe('parseAdaptationResponse', () => {
   it('throws when a required field is missing', () => {
     expect(() => parseAdaptationResponse('{"adaptedResumeText":"Jane Doe"}')).toThrow('missing required fields');
   });
+
+  it('rejects a non-finite originalPositionCount smuggled through as a numeric overflow', () => {
+    // JSON.parse cannot produce a literal NaN (bare "NaN" is invalid JSON syntax), but a huge
+    // exponent like 1e400 IS valid JSON and parses to Infinity — `typeof Infinity === 'number'`
+    // just like `typeof NaN === 'number'`, so the old `typeof x !== 'number'` guard would have
+    // let this through a real JSON round trip. Number.isFinite correctly rejects it.
+    expect(() =>
+      parseAdaptationResponse('{"adaptedResumeText":"x","originalPositionCount":1e400,"retainedPositionCount":1}')
+    ).toThrow('missing required fields');
+  });
+
+  it('rejects a numeric-looking string for retainedPositionCount instead of coercing it', () => {
+    expect(() =>
+      parseAdaptationResponse('{"adaptedResumeText":"x","originalPositionCount":1,"retainedPositionCount":"1"}')
+    ).toThrow('missing required fields');
+  });
 });

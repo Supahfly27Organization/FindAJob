@@ -28,8 +28,12 @@ export function registerSettingsRoutes(app, db) {
   router.post('/resume-template', (req, res, next) => {
     upload.single('file')(req, res, (uploadError) => {
       if (uploadError) {
-        if (uploadError.code === 'LIMIT_FILE_SIZE') {
-          return next(new ValidationError('Resume template must be 10MB or smaller.'));
+        if (uploadError instanceof multer.MulterError) {
+          const message =
+            uploadError.code === 'LIMIT_FILE_SIZE'
+              ? 'Resume template must be 10MB or smaller.'
+              : 'Could not process the uploaded file.';
+          return next(new ValidationError(message));
         }
         return next(uploadError);
       }
