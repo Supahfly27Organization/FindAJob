@@ -117,6 +117,7 @@ export default function SettingsPage() {
       <form onSubmit={handleTemplateUpload}>
         <input
           type="file"
+          accept=".docx,.pdf,.txt,.md"
           aria-label="Resume template file"
           onChange={(event) => setTemplateFile(event.target.files?.[0] ?? null)}
         />

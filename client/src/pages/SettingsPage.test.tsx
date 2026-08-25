@@ -109,7 +109,7 @@ describe('SettingsPage', () => {
   });
 
   it('shows a validation error when the template upload fails', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ applyAccept: false });
     mockFetchSequence([
       { status: 200, body: { hasKey: false, maskedKey: null } },
       NO_TEMPLATE,
