@@ -9,6 +9,8 @@
 ## Key decisions
 - No global state management (Redux/Zustand/etc.) — each page fetches what it needs on mount and re-fetches after mutations. Revisit only if cross-page shared state becomes a real need.
 - Delete/status-change confirmations are inline in the row (not `window.confirm`) so they're testable with React Testing Library and match the stories' "I can cancel without deleting anything" acceptance criteria.
+- "Search all" (Story 2.2) has no dedicated backend endpoint — `PositionTitlesPage` calls the single-title search endpoint once per title, sequentially, tracking per-title state (`idle | searching | done | error`) so failures are isolated and retryable per title without any new state-management library.
+- The status `<select>` on `PostingsPage` only offers `New | In Progress | Rejected` — `Applied` requires the CV-upload flow (Plan 4) and isn't reachable from the UI yet; a posting already `Applied` (once Plan 4 ships) renders as plain text there instead of an editable control.
 
 ## Playbook: adding a page
 1. Add a typed API client function in `src/api/<resource>.ts` (using `apiFetch`).
