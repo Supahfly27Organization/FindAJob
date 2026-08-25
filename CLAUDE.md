@@ -37,14 +37,9 @@ Tech: Node.js
 
 | Task | Read These |
 |------|-----------|
-| Add entity / model | Relevant module's `CLAUDE.md` → add entity → migration/schema update |
-| Add API endpoint | Relevant module's `CLAUDE.md` → controller/handler + service interface |
-| Add business logic | Relevant module's `CLAUDE.md` → service interface + implementation |
-| Add data access | Relevant module's `CLAUDE.md` → data-access interface + implementation |
-| Frontend page | Frontend app's `CLAUDE.md` → shared types → page file |
-| Add new project / module | Create/update its `CLAUDE.md` (architecture + playbook, keep in sync — see Working Rules) |
+| Add/change a backend endpoint or service | `server/CLAUDE.md` |
+| Add/change a frontend page or API client | `client/CLAUDE.md` |
 | Security / quality review | `docs/claude/SCANNING_TOOLS.md` |
-| _(add project-specific rows here as modules are built out)_ | |
 
 ## Security & Quality Scanning
 
@@ -61,20 +56,15 @@ The `github` MCP server (`mcp__github__*`) is always configured — general GitH
 
 ## Repo Rules
 
-1. Never read `FindAJob.Data/Migrations/` (or this project's equivalent migrations folder) unless the task is explicitly about migrations.
+1. There is no migrations folder — `server/src/db/schema.sql` is the single source of schema truth, applied idempotently on every startup.
 2. Preserve existing project names and namespaces when refactoring.
-3. Frontend commands run from `FrontEnd/FindAJob.React/` (or this project's equivalent frontend folder), not the repo root.
-
-<!-- Adjust or replace these with this project's actual do/don't rules as the codebase takes shape. -->
+3. Frontend commands run from `client/`, backend commands run from `server/`; use the root `npm run dev` / `npm start` / `npm test` scripts to operate on both at once.
 
 ## Local DB Defaults
 
 | DB | Connection String |
 |---|---|
-| | |
-
-<!-- Add one row per database this project connects to locally, and note any env var
-     used to override each connection string (e.g. `<NAME>_DB_CONNECTION`). -->
+| SQLite (local file) | `server/data/findajob.db` (created automatically on first run; override with `FINDAJOB_DB_PATH`) |
 
 ## Deeper Context (read as needed)
 
