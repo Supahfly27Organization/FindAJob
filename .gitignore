@@ -466,4 +466,7 @@ trivy/
 # Local PostgreSQL data volume
 postgres/
 
+# Server data directory
+server/data/
+
 .superpowers/
