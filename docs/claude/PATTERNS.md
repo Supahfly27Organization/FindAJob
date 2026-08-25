@@ -15,4 +15,4 @@ Services that write real files use `createDb(':memory:')` for the DB (as always)
 ## Known Issues / Tech Debt
 
 - Adapted resumes and regenerated resume-template documents (`.docx`/`.pdf`) are plain/unstyled — the original template's visual layout is never preserved, only its file format (see `server/CLAUDE.md`'s resume-adaptation decisions).
-- The "never invent/drop content" accuracy constraint on resume adaptation is enforced via a self-reported count from the same OpenAI call, not independent verification — a known v1 limitation, not a bug.
+- The "never invent/drop content" accuracy constraint on resume adaptation is enforced via a self-reported count from the same OpenAI call, and provides no independent assurance — the same model call that might drop or invent content is the one self-reporting whether it did, so a model failure is unlikely to self-report as one. Treat this as a v1 placeholder, not a real safety check.
