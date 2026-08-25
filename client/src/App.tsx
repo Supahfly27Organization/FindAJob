@@ -1,5 +1,6 @@
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import PositionTitlesPage from './pages/PositionTitlesPage';
+import PostingsPage from './pages/PostingsPage';
 import SettingsPage from './pages/SettingsPage';
 import './App.css';
 
@@ -18,6 +19,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/titles" replace />} />
           <Route path="/titles" element={<PositionTitlesPage />} />
+          <Route path="/titles/:id/postings" element={<PostingsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
