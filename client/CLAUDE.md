@@ -2,7 +2,7 @@
 
 ## Architecture
 - React 19 + TypeScript 6, built with Vite 8. `react-router-dom` for client-side routing (`/titles`, `/settings`).
-- `src/api/http.ts` — `apiFetch<T>()` wraps `fetch`, throws `ApiError` (carries `.status`) on non-2xx responses. All other `src/api/*.ts` modules are thin, typed wrappers around it — one file per backend resource.
+- `src/api/http.ts` — `apiFetch<T>()` wraps `fetch`, throws `ApiError` (carries `.status`) on non-2xx responses. All other `src/api/*.ts` modules are thin, typed wrappers around it — one file per backend resource. `apiUpload<T>(path, formData)` is the multipart counterpart: it sends `FormData` with no explicit `Content-Type` (the browser sets the multipart boundary), since `apiFetch` always forces `application/json`.
 - `src/pages/*.tsx` — one page per route, each owning its own data fetching/state (no global state library; this app doesn't need one).
 - In dev, Vite's dev server (port 5173) proxies `/api/*` to the Express server (port 4000) — see `vite.config.ts`. In production the built app is served by that same Express server, so `fetch('/api/...')` works unchanged in both modes.
 
@@ -11,6 +11,7 @@
 - Delete/status-change confirmations are inline in the row (not `window.confirm`) so they're testable with React Testing Library and match the stories' "I can cancel without deleting anything" acceptance criteria.
 - "Search all" (Story 2.2) has no dedicated backend endpoint — `PositionTitlesPage` calls the single-title search endpoint once per title, sequentially, tracking per-title state (`idle | searching | done | error`) so failures are isolated and retryable per title without any new state-management library.
 - The status `<select>` on `PostingsPage` only offers `New | In Progress | Rejected` — `Applied` requires the CV-upload flow (Plan 4) and isn't reachable from the UI yet; a posting already `Applied` (once Plan 4 ships) renders as plain text there instead of an editable control.
+- The resume template file input on `SettingsPage` has no `accept` attribute. Format validation is server-side only (Task 5's `POST /api/settings/resume-template`); an `accept` filter is redundant for correctness and, worse, makes files with non-matching extensions untestable with `@testing-library/user-event`'s `upload()`, which drops files that don't match `accept` before they ever reach `onChange`.
 
 ## Playbook: adding a page
 1. Add a typed API client function in `src/api/<resource>.ts` (using `apiFetch`).
