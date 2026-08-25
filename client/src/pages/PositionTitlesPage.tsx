@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import type { PositionTitle } from '../types';
 import {
   createPositionTitle,
@@ -6,7 +7,10 @@ import {
   fetchPositionTitles,
   updatePositionTitle
 } from '../api/positionTitles';
+import { searchPostingsForTitle } from '../api/postings';
 import { ApiError } from '../api/http';
+
+type SearchState = 'idle' | 'searching' | 'done' | 'error';
 
 export default function PositionTitlesPage() {
   const [titles, setTitles] = useState<PositionTitle[]>([]);
@@ -22,6 +26,9 @@ export default function PositionTitlesPage() {
 
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [searchState, setSearchState] = useState<Record<number, SearchState>>({});
+  const [searchErrors, setSearchErrors] = useState<Record<number, string>>({});
 
   async function loadTitles() {
     setLoading(true);
@@ -85,6 +92,32 @@ export default function PositionTitlesPage() {
     }
   }
 
+  async function runSearch(titleId: number) {
+    setSearchState((prev) => ({ ...prev, [titleId]: 'searching' }));
+    setSearchErrors((prev) => {
+      const next = { ...prev };
+      delete next[titleId];
+      return next;
+    });
+    try {
+      await searchPostingsForTitle(titleId);
+      setSearchState((prev) => ({ ...prev, [titleId]: 'done' }));
+      await loadTitles();
+    } catch (error) {
+      setSearchState((prev) => ({ ...prev, [titleId]: 'error' }));
+      setSearchErrors((prev) => ({
+        ...prev,
+        [titleId]: error instanceof ApiError ? error.message : 'Search failed'
+      }));
+    }
+  }
+
+  async function handleSearchAll() {
+    for (const title of titles) {
+      await runSearch(title.id);
+    }
+  }
+
   if (loading) {
     return <p>Loading position titles…</p>;
   }
@@ -103,6 +136,10 @@ export default function PositionTitlesPage() {
         <button type="submit">Add</button>
         {addError && <p role="alert">{addError}</p>}
       </form>
+
+      <button onClick={handleSearchAll} disabled={titles.length === 0}>
+        Search all
+      </button>
 
       {listError && <p role="alert">{listError}</p>}
 
@@ -162,6 +199,19 @@ export default function PositionTitlesPage() {
                       >
                         Delete
                       </button>
+                      <button
+                        onClick={() => runSearch(title.id)}
+                        disabled={searchState[title.id] === 'searching'}
+                      >
+                        {searchState[title.id] === 'searching' ? 'Searching…' : 'Search now'}
+                      </button>
+                      <Link to={`/titles/${title.id}/postings`}>View postings</Link>
+                      {searchState[title.id] === 'error' && (
+                        <>
+                          <span role="alert">{searchErrors[title.id]}</span>
+                          <button onClick={() => runSearch(title.id)}>Retry</button>
+                        </>
+                      )}
                     </>
                   )}
                 </td>
