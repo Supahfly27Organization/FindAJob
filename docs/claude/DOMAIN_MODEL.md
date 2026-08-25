@@ -30,3 +30,13 @@ PK: `id` (`INTEGER`). A single job posting found by a search, linked to the titl
 | status | `'New' \| 'Applied' \| 'In Progress' \| 'Rejected'` | `postings.status` | DB `CHECK` constraint; app-level writes via this plan's endpoint reject `'Applied'` (see Key decisions) |
 | adaptedResumePath | string \| null | `postings.adapted_resume_path` | Set by Plan 3 (resume adaptation) |
 | appliedCvPath | string \| null | `postings.applied_cv_path` | Set by Plan 4 (Applied CV upload) |
+
+## ResumeTemplate
+
+Not a dedicated table — stored as three key/value rows in `settings`, the same pattern as the OpenAI key. Exactly one active template at a time (Story 4.1).
+
+| Property | Type | Settings key | Notes |
+|---|---|---|---|
+| path | string | `resumeTemplatePath` | Always `RESUME_TEMPLATE_DIR/template.<format>`; overwritten (old file deleted) on re-upload |
+| originalName | string | `resumeTemplateOriginalName` | The filename as uploaded, shown back to the user |
+| format | `'docx' \| 'pdf' \| 'txt' \| 'md'` | `resumeTemplateFormat` | Drives extraction/generation and the adapted resume's output extension |
