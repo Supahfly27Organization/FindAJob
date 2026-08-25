@@ -189,6 +189,27 @@ describe('saveSearchResults', () => {
     expect(result.savedCount).toBe(3);
   });
 
+  it('keeps LinkedIn posting URLs that are plain numeric IDs or have a trailing slash/query string', () => {
+    const result = saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Plain Numeric ID',
+        url: 'https://www.linkedin.com/jobs/view/1234567890',
+        publishedDate: '2026-08-01'
+      },
+      {
+        postingTitle: 'Trailing Slash',
+        url: 'https://www.linkedin.com/jobs/view/3812345678/',
+        publishedDate: '2026-08-01'
+      },
+      {
+        postingTitle: 'Tracking Query String',
+        url: 'https://il.linkedin.com/jobs/view/senior-pm-at-acme-4455848013?trk=public_jobs',
+        publishedDate: '2026-08-01'
+      }
+    ]);
+    expect(result.savedCount).toBe(3);
+  });
+
   it('discards candidates missing a url', () => {
     const result = saveSearchResults(db, title.id, [
       { postingTitle: 'No URL Role', publishedDate: '2026-08-01' }

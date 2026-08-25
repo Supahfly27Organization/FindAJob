@@ -38,9 +38,12 @@ function hasSuspiciousUrlEncoding(url) {
   }
 }
 
-// Per-domain checks for "this is a search/listing page, not a single posting" - the direct-URL
-// prompt instruction alone isn't reliably followed, so this catches the common job-board
-// patterns for a generic results page. Unknown domains fall back to a couple of generic markers.
+// Per-domain checks for "this is a search/listing page, not a single posting". This is
+// deliberately a BLOCKLIST (reject only known-bad patterns, keep everything else) rather than
+// an allowlist (reject anything that doesn't match a "good" pattern) - an allowlist is far too
+// brittle against real-world URL variety (e.g. LinkedIn's plain-numeric-id job links, no slug,
+// no trailing dash) and silently discards good postings the moment the pattern doesn't cover a
+// case, which is worse than occasionally missing a bad one.
 function looksLikeJobListingPage(url) {
   let parsed;
   try {
@@ -49,27 +52,30 @@ function looksLikeJobListingPage(url) {
     return false; // an unparseable URL is caught by the http(s) check, not duplicated here
   }
   const host = parsed.hostname.replace(/^www\./, '');
+  const path = parsed.pathname;
 
   if (host.endsWith('linkedin.com')) {
-    // Real LinkedIn postings are always /jobs/view/<slug>-<numeric id>
-    return !/\/jobs\/view\/[^/?]+-\d{6,}/.test(parsed.pathname);
+    // Listing/category pages: /jobs/search/..., /jobs/collections/..., or a bare
+    // "<slug>-jobs" category page. Anything under /jobs/view/ is always a single posting.
+    if (path.includes('/jobs/view/')) {
+      return false;
+    }
+    return /\/jobs\/(search|collections)\//i.test(path) || /-jobs\/?(?:$|\?)/i.test(path);
   }
   if (host.endsWith('indeed.com')) {
-    // Real Indeed postings use /viewjob?jk=... or /rc/clk?jk=...
-    return !(/\/(viewjob|rc\/clk)\b/.test(parsed.pathname) && /[?&]jk=/.test(parsed.search));
+    // Known listing patterns: a bare "<title>-jobs-in-<place>" category page, or the
+    // "q-<query>.html" search-results template. Real single postings (/viewjob?jk=...,
+    // /rc/clk?jk=..., or other formats Indeed uses) are kept by not matching either.
+    return /-jobs-in-/i.test(path) || /^\/q-.*\.html$/i.test(path);
   }
   if (host.endsWith('alljobs.co.il')) {
-    // Real AllJobs postings carry a numeric JobID, even under a path containing "Search"
-    if (/searchresultsguest/i.test(url)) {
-      return true;
-    }
-    return !/[?&]JobID=\d+/i.test(parsed.search);
+    return /searchresultsguest/i.test(url);
   }
   if (host.endsWith('drushim.co.il')) {
-    return /\/jobs\/search\//i.test(parsed.pathname);
+    return /\/jobs\/search\//i.test(path);
   }
   if (host.endsWith('builtin.com')) {
-    return /\/search\//i.test(parsed.pathname);
+    return /\/search\//i.test(path);
   }
 
   return /searchresults/i.test(url) || /-jobs-in-/i.test(url);
