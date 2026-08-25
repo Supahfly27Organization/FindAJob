@@ -35,6 +35,79 @@ function isValidCandidate(candidate) {
   );
 }
 
+// Near-duplicate detection for the same job posted under different URLs (e.g. LinkedIn vs.
+// the company's own career page). URL-based dedup (the ON CONFLICT(url) below) only catches
+// byte-identical links; this catches "same job, different link" by requiring company + title
+// + location to look like the same role, and only THEN using description similarity as the
+// deciding factor — company/title/location alone are too weak on their own (two genuinely
+// different roles can share all three), and description alone is too weak too (unrelated
+// postings can reuse boilerplate).
+const TITLE_SIMILARITY_THRESHOLD = 0.6;
+const DESCRIPTION_SIMILARITY_THRESHOLD = 0.5;
+const COMPANY_SUFFIX_PATTERN = /\b(inc|ltd|llc|corp|co|gmbh|plc)\b/g;
+
+function normalizeForMatch(text) {
+  return String(text ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeCompanyName(text) {
+  return normalizeForMatch(text).replace(COMPANY_SUFFIX_PATTERN, '').replace(/\s+/g, ' ').trim();
+}
+
+function wordSet(text) {
+  return new Set(normalizeForMatch(text).split(' ').filter(Boolean));
+}
+
+function textSimilarity(a, b) {
+  const setA = wordSet(a);
+  const setB = wordSet(b);
+  if (setA.size === 0 || setB.size === 0) {
+    return 0;
+  }
+  let intersection = 0;
+  for (const word of setA) {
+    if (setB.has(word)) {
+      intersection += 1;
+    }
+  }
+  return intersection / (setA.size + setB.size - intersection);
+}
+
+function isCloseLocationMatch(a, b) {
+  const normA = normalizeForMatch(a);
+  const normB = normalizeForMatch(b);
+  if (!normA || !normB) {
+    return true; // missing location on either side isn't enough to rule out a match
+  }
+  return normA === normB || normA.includes(normB) || normB.includes(normA);
+}
+
+function isLikelyDuplicate(candidate, existing) {
+  const candidateCompany = normalizeCompanyName(candidate.company);
+  if (!candidateCompany || candidateCompany !== normalizeCompanyName(existing.company)) {
+    return false;
+  }
+
+  const candidateTitle = normalizeForMatch(candidate.postingTitle);
+  const titleIsClose =
+    candidateTitle === normalizeForMatch(existing.postingTitle) ||
+    textSimilarity(candidate.postingTitle, existing.postingTitle) >= TITLE_SIMILARITY_THRESHOLD;
+  if (!titleIsClose) {
+    return false;
+  }
+
+  if (!isCloseLocationMatch(candidate.location, existing.location)) {
+    return false;
+  }
+
+  // Company + title + location look like the same job — description similarity is the tiebreaker.
+  return textSimilarity(candidate.description, existing.description) >= DESCRIPTION_SIMILARITY_THRESHOLD;
+}
+
 export function saveSearchResults(db, positionTitleId, candidates) {
   getPositionTitleById(db, positionTitleId);
 
@@ -42,6 +115,10 @@ export function saveSearchResults(db, positionTitleId, candidates) {
     .filter(isValidCandidate)
     .filter((candidate) => isRecentEnough(candidate.publishedDate))
     .slice(0, MAX_RESULTS);
+
+  const knownPostings = db
+    .prepare('SELECT url, posting_title AS postingTitle, company, location, description FROM postings')
+    .all();
 
   const insert = db.prepare(
     `INSERT INTO postings (position_title_id, posting_title, description, company, url, aggregator_name, aggregator_url, location, published_date)
@@ -52,12 +129,20 @@ export function saveSearchResults(db, positionTitleId, candidates) {
   const runAll = db.transaction((rows) => {
     let savedCount = 0;
     for (const row of rows) {
+      const url = row.url.trim();
+      const isDuplicate = knownPostings.some(
+        (existing) => existing.url === url || isLikelyDuplicate(row, existing)
+      );
+      if (isDuplicate) {
+        continue;
+      }
+
       const result = insert.run({
         positionTitleId,
         postingTitle: row.postingTitle.trim(),
         description: row.description ?? null,
         company: row.company ?? null,
-        url: row.url.trim(),
+        url,
         aggregatorName: row.aggregatorName ?? null,
         aggregatorUrl: row.aggregatorUrl ?? null,
         location: row.location ?? null,
@@ -65,6 +150,13 @@ export function saveSearchResults(db, positionTitleId, candidates) {
       });
       if (result.changes > 0) {
         savedCount += 1;
+        knownPostings.push({
+          url,
+          postingTitle: row.postingTitle.trim(),
+          company: row.company ?? null,
+          location: row.location ?? null,
+          description: row.description ?? null
+        });
       }
     }
     return savedCount;

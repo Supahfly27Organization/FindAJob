@@ -58,6 +58,82 @@ describe('saveSearchResults', () => {
     expect(posting.aggregatorUrl).toBeNull();
   });
 
+  it('treats a different URL as a duplicate when company/title/location and description all match closely', () => {
+    saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Senior Product Manager',
+        description: 'Own the roadmap for our core platform and lead a team of five engineers.',
+        company: 'Acme Inc.',
+        url: 'https://www.linkedin.com/jobs/view/1',
+        location: 'Tel Aviv'
+      }
+    ]);
+
+    const result = saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Senior Product Manager',
+        description: 'Own the roadmap for our core platform, leading a team of 5 engineers.',
+        company: 'Acme',
+        url: 'https://careers.acme.com/jobs/senior-pm',
+        location: 'Tel Aviv, Israel'
+      }
+    ]);
+
+    expect(result.savedCount).toBe(0);
+    expect(listPostingsForTitle(db, title.id)).toHaveLength(1);
+  });
+
+  it('does not treat matching company/title/location as a duplicate when descriptions differ', () => {
+    saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Senior Product Manager',
+        description: 'Lead our fintech payments squad building new checkout flows.',
+        company: 'Acme',
+        url: 'https://www.linkedin.com/jobs/view/1',
+        location: 'Tel Aviv'
+      }
+    ]);
+
+    const result = saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Senior Product Manager',
+        description: 'Lead our data platform team building the analytics warehouse.',
+        company: 'Acme',
+        url: 'https://careers.acme.com/jobs/senior-pm-2',
+        location: 'Tel Aviv'
+      }
+    ]);
+
+    expect(result.savedCount).toBe(1);
+    expect(listPostingsForTitle(db, title.id)).toHaveLength(2);
+  });
+
+  it('does not treat postings at different companies as duplicates even with matching title/location/description', () => {
+    const description = 'Own the roadmap for our core platform and lead a team of five engineers.';
+    saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Senior Product Manager',
+        description,
+        company: 'Acme',
+        url: 'https://www.linkedin.com/jobs/view/1',
+        location: 'Tel Aviv'
+      }
+    ]);
+
+    const result = saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Senior Product Manager',
+        description,
+        company: 'Wixel',
+        url: 'https://careers.wixel.com/jobs/senior-pm',
+        location: 'Tel Aviv'
+      }
+    ]);
+
+    expect(result.savedCount).toBe(1);
+    expect(listPostingsForTitle(db, title.id)).toHaveLength(2);
+  });
+
   it('discards candidates missing a url', () => {
     const result = saveSearchResults(db, title.id, [
       { postingTitle: 'No URL Role', publishedDate: '2026-08-01' }
