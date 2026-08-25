@@ -27,3 +27,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   return response.json() as Promise<T>;
 }
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const response = await fetch(path, { method: 'POST', body: formData });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ message: response.statusText }));
+    throw new ApiError(body.message ?? 'Request failed', response.status);
+  }
+
+  return response.json() as Promise<T>;
+}
