@@ -22,6 +22,12 @@ describe('buildSearchPrompt', () => {
     expect(prompt).toContain('"aggregatorName"');
     expect(prompt).toContain('"aggregatorUrl"');
   });
+
+  it('forbids fabricating a URL', () => {
+    const prompt = buildSearchPrompt('Product Manager');
+    expect(prompt).toContain('never guess, construct, or approximate');
+    expect(prompt).toContain('omit that result entirely rather than inventing one');
+  });
 });
 
 describe('parseSearchResponse', () => {

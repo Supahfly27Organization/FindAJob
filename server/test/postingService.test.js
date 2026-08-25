@@ -39,14 +39,14 @@ describe('saveSearchResults', () => {
     saveSearchResults(db, title.id, [
       {
         postingTitle: 'Senior Product Manager',
-        url: 'https://www.linkedin.com/jobs/view/12345',
+        url: 'https://www.linkedin.com/jobs/view/senior-product-manager-1234567890',
         aggregatorName: 'LinkedIn',
-        aggregatorUrl: 'https://www.linkedin.com/jobs/view/12345'
+        aggregatorUrl: 'https://www.linkedin.com/jobs/view/senior-product-manager-1234567890'
       }
     ]);
     const [posting] = listPostingsForTitle(db, title.id);
     expect(posting.aggregatorName).toBe('LinkedIn');
-    expect(posting.aggregatorUrl).toBe('https://www.linkedin.com/jobs/view/12345');
+    expect(posting.aggregatorUrl).toBe('https://www.linkedin.com/jobs/view/senior-product-manager-1234567890');
   });
 
   it('saves null aggregator fields when not provided', () => {
@@ -64,7 +64,7 @@ describe('saveSearchResults', () => {
         postingTitle: 'Senior Product Manager',
         description: 'Own the roadmap for our core platform and lead a team of five engineers.',
         company: 'Acme Inc.',
-        url: 'https://www.linkedin.com/jobs/view/1',
+        url: 'https://www.linkedin.com/jobs/view/senior-product-manager-1234567890',
         location: 'Tel Aviv'
       }
     ]);
@@ -89,7 +89,7 @@ describe('saveSearchResults', () => {
         postingTitle: 'Senior Product Manager',
         description: 'Lead our fintech payments squad building new checkout flows.',
         company: 'Acme',
-        url: 'https://www.linkedin.com/jobs/view/1',
+        url: 'https://www.linkedin.com/jobs/view/senior-product-manager-1234567890',
         location: 'Tel Aviv'
       }
     ]);
@@ -115,7 +115,7 @@ describe('saveSearchResults', () => {
         postingTitle: 'Senior Product Manager',
         description,
         company: 'Acme',
-        url: 'https://www.linkedin.com/jobs/view/1',
+        url: 'https://www.linkedin.com/jobs/view/senior-product-manager-1234567890',
         location: 'Tel Aviv'
       }
     ]);
@@ -132,6 +132,61 @@ describe('saveSearchResults', () => {
 
     expect(result.savedCount).toBe(1);
     expect(listPostingsForTitle(db, title.id)).toHaveLength(2);
+  });
+
+  it('discards candidates whose URL decodes to an unexpected script (a fabrication signal)', () => {
+    const result = saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Fabricated Role',
+        url: 'https://il.indeed.com/ved/VP-R%D0%A6-Factify-job',
+        publishedDate: '2026-08-01'
+      }
+    ]);
+    expect(result.savedCount).toBe(0);
+    expect(listPostingsForTitle(db, title.id)).toHaveLength(0);
+  });
+
+  it('discards a candidate whose URL is a category/listing page instead of a single posting', () => {
+    const result = saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Listing Page Role',
+        url: 'https://il.linkedin.com/jobs/research-and-development-manager-jobs',
+        publishedDate: '2026-08-01'
+      },
+      {
+        postingTitle: 'Search Results Role',
+        url: 'https://www.alljobs.co.il/SearchResultsGuest.aspx?city=&page=1&position=258&region=&type=4',
+        publishedDate: '2026-08-01'
+      },
+      {
+        postingTitle: 'Indeed Category Role',
+        url: 'https://il.indeed.com/VP-R%26D-jobs-in-Israel',
+        publishedDate: '2026-08-01'
+      }
+    ]);
+    expect(result.savedCount).toBe(0);
+    expect(listPostingsForTitle(db, title.id)).toHaveLength(0);
+  });
+
+  it('keeps a real per-posting URL even when its path contains the word "search"', () => {
+    const result = saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Real AllJobs Posting',
+        url: 'https://www.alljobs.co.il/Search/UploadSingle.aspx?JobID=8740882',
+        publishedDate: '2026-08-01'
+      },
+      {
+        postingTitle: 'Real Indeed Posting',
+        url: 'https://il.indeed.com/viewjob?jk=da83e8dd32a40bf1',
+        publishedDate: '2026-08-01'
+      },
+      {
+        postingTitle: 'Real LinkedIn Posting',
+        url: 'https://il.linkedin.com/jobs/view/r-d-manager-at-dialog-4455848013',
+        publishedDate: '2026-08-01'
+      }
+    ]);
+    expect(result.savedCount).toBe(3);
   });
 
   it('discards candidates missing a url', () => {

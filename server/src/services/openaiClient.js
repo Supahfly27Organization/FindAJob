@@ -10,7 +10,7 @@ export function buildSearchPrompt(title) {
 Use web search to find real, currently open job postings. Return at most ${MAX_RESULTS} postings, each published within the last ${MAX_AGE_DAYS} days.
 
 For each posting, identify:
-- "url": the direct application URL — the exact page where a candidate can read the full posting and apply. This must be the posting's own page, never a search-results page, a category/listing page, or a shortened/redirect link. If the posting page you found is on a job aggregator (e.g. LinkedIn, Indeed, AllJobs, Glassdoor) and that aggregator's own posting page is where a candidate would apply, use that aggregator page as "url".
+- "url": the direct application URL — the exact page where a candidate can read the full posting and apply. This must be the posting's own page, never a search-results page, a category/listing page, or a shortened/redirect link. If the posting page you found is on a job aggregator (e.g. LinkedIn, Indeed, AllJobs, Glassdoor) and that aggregator's own posting page is where a candidate would apply, use that aggregator page as "url". Only ever use a URL you actually found via web search — never guess, construct, or approximate one. If you cannot find a working direct posting URL for a result, omit that result entirely rather than inventing one.
 - "aggregatorName": the name of the site where you found this listing (e.g. "LinkedIn", "AllJobs", "Indeed", "Glassdoor"), or "Company Career Page" if you found it directly on the employer's own site.
 - "aggregatorUrl": the URL of the listing as it appears on that aggregator/source. This may be identical to "url" above, or different if the aggregator only shows a summary that links out elsewhere.
 

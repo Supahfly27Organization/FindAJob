@@ -25,13 +25,70 @@ function isRecentEnough(publishedDate) {
   return ageMs <= MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 }
 
+// Scripts that have no business appearing in a URL for an Israeli job posting (Latin/Hebrew
+// sites only). A percent-encoded Cyrillic/CJK/Hangul character is a strong signal the model
+// fabricated a plausible-looking URL rather than returning a real one it found via web search.
+const SUSPICIOUS_SCRIPT_PATTERN = /[Ѐ-ӿ一-鿿぀-ヿ가-힣]/;
+
+function hasSuspiciousUrlEncoding(url) {
+  try {
+    return SUSPICIOUS_SCRIPT_PATTERN.test(decodeURIComponent(url));
+  } catch {
+    return true; // malformed percent-encoding is itself a bad sign
+  }
+}
+
+// Per-domain checks for "this is a search/listing page, not a single posting" - the direct-URL
+// prompt instruction alone isn't reliably followed, so this catches the common job-board
+// patterns for a generic results page. Unknown domains fall back to a couple of generic markers.
+function looksLikeJobListingPage(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false; // an unparseable URL is caught by the http(s) check, not duplicated here
+  }
+  const host = parsed.hostname.replace(/^www\./, '');
+
+  if (host.endsWith('linkedin.com')) {
+    // Real LinkedIn postings are always /jobs/view/<slug>-<numeric id>
+    return !/\/jobs\/view\/[^/?]+-\d{6,}/.test(parsed.pathname);
+  }
+  if (host.endsWith('indeed.com')) {
+    // Real Indeed postings use /viewjob?jk=... or /rc/clk?jk=...
+    return !(/\/(viewjob|rc\/clk)\b/.test(parsed.pathname) && /[?&]jk=/.test(parsed.search));
+  }
+  if (host.endsWith('alljobs.co.il')) {
+    // Real AllJobs postings carry a numeric JobID, even under a path containing "Search"
+    if (/searchresultsguest/i.test(url)) {
+      return true;
+    }
+    return !/[?&]JobID=\d+/i.test(parsed.search);
+  }
+  if (host.endsWith('drushim.co.il')) {
+    return /\/jobs\/search\//i.test(parsed.pathname);
+  }
+  if (host.endsWith('builtin.com')) {
+    return /\/search\//i.test(parsed.pathname);
+  }
+
+  return /searchresults/i.test(url) || /-jobs-in-/i.test(url);
+}
+
 function isValidCandidate(candidate) {
+  if (
+    !candidate ||
+    typeof candidate.url !== 'string' ||
+    typeof candidate.postingTitle !== 'string' ||
+    !candidate.postingTitle.trim()
+  ) {
+    return false;
+  }
+  const url = candidate.url.trim();
   return (
-    candidate &&
-    typeof candidate.url === 'string' &&
-    /^https?:\/\//i.test(candidate.url.trim()) &&
-    typeof candidate.postingTitle === 'string' &&
-    candidate.postingTitle.trim()
+    /^https?:\/\//i.test(url) &&
+    !hasSuspiciousUrlEncoding(url) &&
+    !looksLikeJobListingPage(url)
   );
 }
 
