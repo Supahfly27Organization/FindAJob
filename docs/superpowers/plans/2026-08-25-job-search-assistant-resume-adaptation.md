@@ -497,6 +497,7 @@ function generatePdf(text, outputPath) {
     const doc = new PDFDocument({ margin: 50 });
     const stream = fs.createWriteStream(outputPath);
     doc.pipe(stream);
+    doc.on('error', reject);
     stream.on('finish', resolve);
     stream.on('error', reject);
     for (const line of text.split('\n')) {
