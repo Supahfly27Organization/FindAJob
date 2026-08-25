@@ -14,6 +14,14 @@ describe('buildSearchPrompt', () => {
     expect(prompt).toContain('20');
     expect(prompt).toContain('45');
   });
+
+  it('requires the direct application URL and requests aggregator fields', () => {
+    const prompt = buildSearchPrompt('Product Manager');
+    expect(prompt).toContain('direct application URL');
+    expect(prompt).toContain('never a search-results page');
+    expect(prompt).toContain('"aggregatorName"');
+    expect(prompt).toContain('"aggregatorUrl"');
+  });
 });
 
 describe('parseSearchResponse', () => {

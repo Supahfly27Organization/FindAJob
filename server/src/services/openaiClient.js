@@ -9,12 +9,19 @@ export function buildSearchPrompt(title) {
 
 Use web search to find real, currently open job postings. Return at most ${MAX_RESULTS} postings, each published within the last ${MAX_AGE_DAYS} days.
 
+For each posting, identify:
+- "url": the direct application URL — the exact page where a candidate can read the full posting and apply. This must be the posting's own page, never a search-results page, a category/listing page, or a shortened/redirect link. If the posting page you found is on a job aggregator (e.g. LinkedIn, Indeed, AllJobs, Glassdoor) and that aggregator's own posting page is where a candidate would apply, use that aggregator page as "url".
+- "aggregatorName": the name of the site where you found this listing (e.g. "LinkedIn", "AllJobs", "Indeed", "Glassdoor"), or "Company Career Page" if you found it directly on the employer's own site.
+- "aggregatorUrl": the URL of the listing as it appears on that aggregator/source. This may be identical to "url" above, or different if the aggregator only shows a summary that links out elsewhere.
+
 Respond with ONLY a JSON array (no markdown, no commentary, no code fences) where each element has exactly these fields:
 {
   "postingTitle": string,
   "description": string,
   "company": string,
   "url": string,
+  "aggregatorName": string,
+  "aggregatorUrl": string,
   "location": string,
   "publishedDate": string (ISO 8601 date, e.g. "2026-08-01")
 }

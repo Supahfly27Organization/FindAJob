@@ -35,6 +35,29 @@ describe('saveSearchResults', () => {
     expect(listPostingsForTitle(db, title.id)).toHaveLength(1);
   });
 
+  it('saves the aggregator name and URL when provided', () => {
+    saveSearchResults(db, title.id, [
+      {
+        postingTitle: 'Senior Product Manager',
+        url: 'https://www.linkedin.com/jobs/view/12345',
+        aggregatorName: 'LinkedIn',
+        aggregatorUrl: 'https://www.linkedin.com/jobs/view/12345'
+      }
+    ]);
+    const [posting] = listPostingsForTitle(db, title.id);
+    expect(posting.aggregatorName).toBe('LinkedIn');
+    expect(posting.aggregatorUrl).toBe('https://www.linkedin.com/jobs/view/12345');
+  });
+
+  it('saves null aggregator fields when not provided', () => {
+    saveSearchResults(db, title.id, [
+      { postingTitle: 'Direct Role', url: 'https://example.com/careers/direct-role' }
+    ]);
+    const [posting] = listPostingsForTitle(db, title.id);
+    expect(posting.aggregatorName).toBeNull();
+    expect(posting.aggregatorUrl).toBeNull();
+  });
+
   it('discards candidates missing a url', () => {
     const result = saveSearchResults(db, title.id, [
       { postingTitle: 'No URL Role', publishedDate: '2026-08-01' }

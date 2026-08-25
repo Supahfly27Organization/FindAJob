@@ -168,6 +168,7 @@ export default function PostingsPage() {
               <th>Status</th>
               <th>Company</th>
               <th>Location</th>
+              <th>Source</th>
               <th>Actions</th>
               <th>Resume</th>
             </tr>
@@ -209,6 +210,19 @@ export default function PostingsPage() {
                   </td>
                   <td>{posting.company ?? '—'}</td>
                   <td>{posting.location ?? '—'}</td>
+                  <td>
+                    {posting.aggregatorName ? (
+                      posting.aggregatorUrl ? (
+                        <a href={posting.aggregatorUrl} target="_blank" rel="noopener noreferrer">
+                          {posting.aggregatorName}
+                        </a>
+                      ) : (
+                        posting.aggregatorName
+                      )
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td>
                     <button onClick={() => handleOpen(posting)}>Open</button>
                   </td>

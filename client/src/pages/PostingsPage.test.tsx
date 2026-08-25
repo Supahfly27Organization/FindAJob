@@ -43,6 +43,8 @@ const POSTING = {
   description: 'Great role',
   company: 'Acme',
   url: 'https://example.com/job/1',
+  aggregatorName: null,
+  aggregatorUrl: null,
   location: 'Tel Aviv',
   publishedDate: '2026-08-01',
   foundAt: '2026-08-01',
@@ -71,6 +73,33 @@ describe('PostingsPage', () => {
     renderPage();
     expect(await screen.findByText('Senior PM')).toBeInTheDocument();
     expect(screen.getByText('No')).toBeInTheDocument();
+  });
+
+  it('shows a dash for the source when no aggregator was found', async () => {
+    mockFetchSequence([
+      { status: 200, body: TITLES },
+      { status: 200, body: [POSTING] }
+    ]);
+    renderPage();
+    await screen.findByText('Senior PM');
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  it('shows the aggregator name as a link to its listing', async () => {
+    const postingWithAggregator = {
+      ...POSTING,
+      aggregatorName: 'LinkedIn',
+      aggregatorUrl: 'https://www.linkedin.com/jobs/view/12345'
+    };
+    mockFetchSequence([
+      { status: 200, body: TITLES },
+      { status: 200, body: [postingWithAggregator] }
+    ]);
+    renderPage();
+    await screen.findByText('Senior PM');
+
+    const link = screen.getByRole('link', { name: 'LinkedIn' });
+    expect(link).toHaveAttribute('href', 'https://www.linkedin.com/jobs/view/12345');
   });
 
   it('runs a search and reports zero matches', async () => {

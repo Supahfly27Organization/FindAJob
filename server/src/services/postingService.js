@@ -5,7 +5,8 @@ import { MAX_RESULTS, MAX_AGE_DAYS } from './openaiClient.js';
 const EDITABLE_STATUSES = ['New', 'In Progress', 'Rejected'];
 
 const SELECT_COLUMNS = `id, position_title_id AS positionTitleId, posting_title AS postingTitle,
-  description, company, url, location, published_date AS publishedDate, found_at AS foundAt,
+  description, company, url, aggregator_name AS aggregatorName, aggregator_url AS aggregatorUrl,
+  location, published_date AS publishedDate, found_at AS foundAt,
   viewed, status, adapted_resume_path AS adaptedResumePath, applied_cv_path AS appliedCvPath`;
 
 function toPosting(row) {
@@ -43,8 +44,8 @@ export function saveSearchResults(db, positionTitleId, candidates) {
     .slice(0, MAX_RESULTS);
 
   const insert = db.prepare(
-    `INSERT INTO postings (position_title_id, posting_title, description, company, url, location, published_date)
-     VALUES (@positionTitleId, @postingTitle, @description, @company, @url, @location, @publishedDate)
+    `INSERT INTO postings (position_title_id, posting_title, description, company, url, aggregator_name, aggregator_url, location, published_date)
+     VALUES (@positionTitleId, @postingTitle, @description, @company, @url, @aggregatorName, @aggregatorUrl, @location, @publishedDate)
      ON CONFLICT(url) DO NOTHING`
   );
 
@@ -57,6 +58,8 @@ export function saveSearchResults(db, positionTitleId, candidates) {
         description: row.description ?? null,
         company: row.company ?? null,
         url: row.url.trim(),
+        aggregatorName: row.aggregatorName ?? null,
+        aggregatorUrl: row.aggregatorUrl ?? null,
         location: row.location ?? null,
         publishedDate: row.publishedDate ?? null
       });

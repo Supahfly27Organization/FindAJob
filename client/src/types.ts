@@ -14,6 +14,8 @@ export interface Posting {
   description: string | null;
   company: string | null;
   url: string;
+  aggregatorName: string | null;
+  aggregatorUrl: string | null;
   location: string | null;
   publishedDate: string | null;
   foundAt: string;

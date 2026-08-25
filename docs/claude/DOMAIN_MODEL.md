@@ -22,7 +22,9 @@ PK: `id` (`INTEGER`). A single job posting found by a search, linked to the titl
 | postingTitle | string | `postings.posting_title` | The posting's own title (may differ from the searched `PositionTitle.title`) |
 | description | string \| null | `postings.description` | |
 | company | string \| null | `postings.company` | |
-| url | string | `postings.url` | Unique — the dedup key across repeated searches |
+| url | string | `postings.url` | The direct application URL (the posting's own page, not a search-results/listing page) — unique, and the dedup key across repeated searches |
+| aggregatorName | string \| null | `postings.aggregator_name` | Name of the job board/aggregator the posting was found on (e.g. "LinkedIn"), or "Company Career Page" if found directly on the employer's site |
+| aggregatorUrl | string \| null | `postings.aggregator_url` | URL of the listing as it appears on that aggregator; may equal `url` |
 | location | string \| null | `postings.location` | |
 | publishedDate | string \| null | `postings.published_date` | As reported by the search; unparseable/missing values are not treated as stale |
 | foundAt | string (ISO datetime) | `postings.found_at` | Set once, at insert time |

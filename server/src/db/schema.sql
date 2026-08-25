@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS postings (
   description TEXT,
   company TEXT,
   url TEXT NOT NULL UNIQUE,
+  aggregator_name TEXT,
+  aggregator_url TEXT,
   location TEXT,
   published_date TEXT,
   found_at TEXT NOT NULL DEFAULT (datetime('now')),
