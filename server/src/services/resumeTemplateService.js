@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ValidationError } from '../errors.js';
-import { RESUME_TEMPLATE_DIR } from '../config.js';
+import { RESUME_TEMPLATE_DIR, FIXED_RESUME_TEMPLATE_PATH } from '../config.js';
 
 const ALLOWED_FORMATS = ['docx', 'pdf', 'txt', 'md'];
 const MAX_TEMPLATE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -21,7 +21,17 @@ function setSetting(db, key, value) {
   ).run(key, value);
 }
 
+// A Resume.docx dropped at the repo root always wins over whatever was uploaded via
+// Settings - lets David keep the template file managed alongside the code/config instead
+// of round-tripping it through the upload UI on every fresh local DB.
+function getFixedTemplateInfo() {
+  return fs.existsSync(FIXED_RESUME_TEMPLATE_PATH) ? { path: FIXED_RESUME_TEMPLATE_PATH, format: 'docx' } : null;
+}
+
 export function getResumeTemplateStatus(db) {
+  if (getFixedTemplateInfo()) {
+    return { hasTemplate: true, originalName: 'Resume.docx', format: 'docx' };
+  }
   return {
     hasTemplate: Boolean(getResumeTemplateInfo(db)),
     originalName: getSetting(db, NAME_KEY),
@@ -30,6 +40,10 @@ export function getResumeTemplateStatus(db) {
 }
 
 export function getResumeTemplateInfo(db) {
+  const fixed = getFixedTemplateInfo();
+  if (fixed) {
+    return fixed;
+  }
   const filePath = getSetting(db, PATH_KEY);
   const format = getSetting(db, FORMAT_KEY);
   if (!filePath || !format || !fs.existsSync(filePath)) {

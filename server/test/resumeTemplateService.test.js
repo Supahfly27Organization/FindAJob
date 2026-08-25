@@ -7,7 +7,7 @@ import {
   saveResumeTemplate
 } from '../src/services/resumeTemplateService.js';
 import { ValidationError } from '../src/errors.js';
-import { RESUME_TEMPLATE_DIR } from '../src/config.js';
+import { RESUME_TEMPLATE_DIR, FIXED_RESUME_TEMPLATE_PATH } from '../src/config.js';
 
 let db;
 
@@ -17,6 +17,7 @@ beforeEach(() => {
 
 afterEach(() => {
   fs.rmSync(RESUME_TEMPLATE_DIR, { recursive: true, force: true });
+  fs.rmSync(FIXED_RESUME_TEMPLATE_PATH, { force: true });
 });
 
 describe('getResumeTemplateStatus', () => {
@@ -85,5 +86,33 @@ describe('saveResumeTemplate', () => {
 
   it('rejects when no file is provided', () => {
     expect(() => saveResumeTemplate(db, undefined)).toThrow(ValidationError);
+  });
+});
+
+describe('Resume.docx at the repo root', () => {
+  it('is used, and overrides any uploaded template, when present', () => {
+    saveResumeTemplate(db, { originalname: 'uploaded.pdf', size: 10, buffer: Buffer.from('uploaded') });
+    fs.writeFileSync(FIXED_RESUME_TEMPLATE_PATH, 'fixed template bytes');
+
+    const info = getResumeTemplateInfo(db);
+    expect(info).toEqual({ path: FIXED_RESUME_TEMPLATE_PATH, format: 'docx' });
+  });
+
+  it('is reported via getResumeTemplateStatus even with no DB-saved template', () => {
+    fs.writeFileSync(FIXED_RESUME_TEMPLATE_PATH, 'fixed template bytes');
+
+    expect(getResumeTemplateStatus(db)).toEqual({
+      hasTemplate: true,
+      originalName: 'Resume.docx',
+      format: 'docx'
+    });
+  });
+
+  it('falls back to the uploaded template once removed', () => {
+    saveResumeTemplate(db, { originalname: 'uploaded.pdf', size: 10, buffer: Buffer.from('uploaded') });
+    fs.writeFileSync(FIXED_RESUME_TEMPLATE_PATH, 'fixed template bytes');
+    fs.unlinkSync(FIXED_RESUME_TEMPLATE_PATH);
+
+    expect(getResumeTemplateInfo(db).format).toBe('pdf');
   });
 });
