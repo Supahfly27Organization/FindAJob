@@ -1341,7 +1341,11 @@ describe('SettingsPage', () => {
   });
 
   it('shows a validation error when the template upload fails', async () => {
-    const user = userEvent.setup();
+    // applyAccept: false — the input keeps accept=".docx,.pdf,.txt,.md" for real users (a native
+    // file-picker UX hint), but userEvent.upload() filters files against that same attribute by
+    // default, which would silently drop this .pages fixture before it ever reaches onChange.
+    // This flag is test-only and does not change production behavior.
+    const user = userEvent.setup({ applyAccept: false });
     mockFetchSequence([
       { status: 200, body: { hasKey: false, maskedKey: null } },
       NO_TEMPLATE,
