@@ -1,111 +1,185 @@
+/* ─────────────────────────────────────────────────────────────
+   The Campaign Log — design tokens
+   Spec: docs/design/campaign-log.md
+   Lock: .tastemaker/style-lock.md
+   Every value here is verified; do not introduce a colour, size,
+   radius, or easing curve that is not in the lock.
+   ───────────────────────────────────────────────────────────── */
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Light — the primary mode */
+  --bg: #f2ede1;
+  --surface: #fbf8f0;
+  --ink: #1c1a16;
+  --ink-muted: #5f5a4c;
+  --rule: #cfc5ab;
+  --sienna: #a0492a;
+  --sienna-hover: #904328;
+  --teal: #1b4b5a;
+  --on-fill: #fbf8f0;
+  --backdrop: rgba(28, 26, 22, 0.4);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --shadow-document: 0 24px 48px rgba(28, 26, 22, 0.16);
+  --shadow-dialog: 0 16px 40px rgba(28, 26, 22, 0.22);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --sans: 'Public Sans', 'Segoe UI', system-ui, sans-serif;
+
+  /* Type ladder */
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-body: 17px;
+  --text-lg: 21px;
+  --text-xl: 26px;
+  --text-2xl: 32px;
+  --text-stat: 34px;
+
+  /* Spacing — 4px base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --measure: 66ch;
+  --rail: 168px;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --duration-press: 120ms;
+  --duration-popover: 180ms;
+  --duration-panel: 240ms;
+
   color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  :root:not([data-theme='light']) {
+    --bg: #1a1815;
+    --surface: #232019;
+    --ink: #ede7da;
+    --ink-muted: #a89f8c;
+    --rule: #3a352c;
+    --sienna: #d07b54;
+    --sienna-hover: #d38864;
+    --teal: #5a9bae;
+    --on-fill: #1a1815;
+    --backdrop: rgba(10, 9, 8, 0.55);
+    --shadow-document: 0 24px 48px rgba(0, 0, 0, 0.45);
+    --shadow-dialog: 0 16px 40px rgba(0, 0, 0, 0.55);
   }
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+:root[data-theme='dark'] {
+  --bg: #1a1815;
+  --surface: #232019;
+  --ink: #ede7da;
+  --ink-muted: #a89f8c;
+  --rule: #3a352c;
+  --sienna: #d07b54;
+  --sienna-hover: #d38864;
+  --teal: #5a9bae;
+  --on-fill: #1a1815;
+  --backdrop: rgba(10, 9, 8, 0.55);
+  --shadow-document: 0 24px 48px rgba(0, 0, 0, 0.45);
+  --shadow-dialog: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: var(--text-body);
+  line-height: 1.65;
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Headings are roman. Emphasis is weight, sienna, or a drawn underline —
+   never italic. See docs/design/campaign-log.md §4. */
 h1,
-h2 {
-  font-family: var(--heading);
+h2,
+h3,
+h4 {
+  font-family: var(--serif);
+  font-style: normal;
   font-weight: 500;
-  color: var(--text-h);
+  color: var(--ink);
+  margin: 0;
+  text-wrap: balance;
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+h2 {
+  font-size: var(--text-xl);
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+}
+
+h3 {
+  font-size: var(--text-lg);
+  line-height: 1.35;
+  letter-spacing: -0.008em;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--sienna);
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--sienna);
+  outline-offset: 2px;
 }
 
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.82em;
+  padding: 0.1em 0.35em;
+  background: color-mix(in srgb, var(--rule) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

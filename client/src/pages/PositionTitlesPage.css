@@ -1,0 +1,468 @@
+/* ── Position Titles — the first screen built in The Campaign Log ──
+   Entries in a log, not cards in a grid. Radius 0, no shadows,
+   state always carried by two channels. */
+
+.log-head {
+  max-width: var(--measure);
+}
+
+.log-standfirst {
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  margin-top: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── controls bar ── */
+
+.log-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--rule);
+}
+
+.log-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+/* ── field: underlined, never boxed ── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 260px;
+}
+
+.field-label,
+.label {
+  font-family: var(--sans);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.field input {
+  width: 100%;
+  font-family: var(--serif);
+  font-size: var(--text-body);
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: var(--space-3) 0;
+  min-height: 44px;
+  transition: border-color var(--duration-press) var(--ease-out);
+}
+
+.field input::placeholder {
+  color: var(--ink-muted);
+  opacity: 0.75;
+}
+
+.field input:focus-visible {
+  outline: 2px solid var(--sienna);
+  outline-offset: 2px;
+  border-bottom-color: var(--sienna);
+}
+
+/* Pointer focus keeps the quieter underline-only treatment. */
+.field input:focus:not(:focus-visible) {
+  outline: none;
+  border-bottom-color: var(--sienna);
+}
+
+.field input[aria-invalid='true'] {
+  border-bottom-color: var(--sienna);
+}
+
+/* ── buttons: type-led, not boxes ── */
+
+.btn {
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  padding: var(--space-3) var(--space-6);
+  min-height: 44px;
+  transition:
+    background var(--duration-press) var(--ease-out),
+    color var(--duration-press) var(--ease-out),
+    box-shadow var(--duration-press) var(--ease-out);
+}
+
+.btn:active:not([disabled]) {
+  transform: scale(0.97);
+}
+
+.btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--sienna);
+  color: var(--on-fill);
+}
+
+.btn-secondary,
+.btn-destructive,
+.btn-quiet {
+  padding-inline: 0;
+}
+
+.btn-secondary {
+  box-shadow: inset 0 -1px 0 0 var(--rule);
+}
+
+.btn-destructive {
+  color: var(--sienna);
+  box-shadow: inset 0 -1px 0 0 var(--sienna);
+}
+
+.btn-quiet {
+  color: var(--ink-muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not([disabled]) {
+    background: var(--sienna-hover);
+  }
+  .btn-secondary:hover:not([disabled]),
+  .btn-destructive:hover:not([disabled]) {
+    box-shadow: inset 0 -2px 0 0 var(--sienna);
+  }
+  .btn-quiet:hover:not([disabled]) {
+    color: var(--ink);
+    box-shadow: inset 0 -1px 0 0 var(--rule);
+  }
+}
+
+/* ── search-all progress: honesty over animation ── */
+
+.log-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.run-status {
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stays in the accessibility tree (never display:none) so repeated polite
+   announcements land, but reserves no space while idle. */
+.run-status:empty {
+  height: 0;
+  overflow: hidden;
+}
+
+.run-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.run-progress {
+  height: 2px;
+  width: 180px;
+  background: var(--rule);
+  margin-top: var(--space-2);
+}
+
+.run-progress > i {
+  display: block;
+  height: 2px;
+  background: var(--sienna);
+  transition: width var(--duration-panel) var(--ease-out);
+}
+
+/* ── the feed ── */
+
+.log-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.log-feed > li {
+  border-bottom: 1px solid var(--rule);
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-6);
+  padding: var(--space-6) 0;
+  align-items: start;
+}
+
+.entry-title {
+  font-family: var(--serif);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.008em;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* Spans both rows so the tally reads as a rail figure beside the entry,
+   instead of forcing row 1 to its own height and dropping a gap above
+   the actions. */
+.entry-count {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  text-align: right;
+}
+
+.entry-count-n {
+  font-family: var(--serif);
+  font-size: var(--text-xl);
+  font-weight: 400;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+.entry-count-n[data-zero='true'] {
+  opacity: 0.65;
+}
+
+.entry-count-l {
+  font-family: var(--sans);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: var(--space-1);
+}
+
+.entry-actions {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-6);
+  margin-top: var(--space-1);
+}
+
+.entry-link {
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: inset 0 -1px 0 0 var(--rule);
+  padding: var(--space-3) 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  transition: box-shadow var(--duration-press) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .entry-link:hover {
+    box-shadow: inset 0 -2px 0 0 var(--sienna);
+  }
+}
+
+.entry-edit {
+  grid-column: 1;
+  max-width: 420px;
+}
+
+/* ── inline confirmation: role="alertdialog", focus moved ── */
+
+.entry-confirm {
+  grid-column: 1;
+  border-left: 2px solid var(--sienna);
+  padding: var(--space-3) 0 var(--space-3) var(--space-4);
+  max-width: var(--measure);
+}
+
+.entry-confirm-q {
+  font-family: var(--serif);
+  font-size: var(--text-base);
+  margin-bottom: var(--space-2);
+}
+
+.entry-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+/* ── messages ── */
+
+.msg {
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.msg-success {
+  color: var(--teal);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.msg-success::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--teal);
+  flex: none;
+}
+
+.msg-error {
+  color: var(--sienna);
+  font-weight: 500;
+}
+
+.alert-block {
+  border-left: 2px solid var(--sienna);
+  padding: var(--space-3) 0 var(--space-3) var(--space-4);
+  max-width: var(--measure);
+  margin-top: var(--space-6);
+}
+
+.field-error {
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--sienna);
+}
+
+.alert-block .alert-msg {
+  font-family: var(--serif);
+  font-size: var(--text-body);
+  margin-bottom: var(--space-2);
+}
+
+/* ── empty state: a blank page, not a broken one ── */
+
+.log-empty {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: var(--space-8);
+  max-width: 560px;
+}
+
+.log-empty-title {
+  font-family: var(--serif);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink);
+  margin-bottom: var(--space-2);
+}
+
+.log-empty p {
+  color: var(--ink-muted);
+  margin-bottom: var(--space-4);
+}
+
+.log-empty p:last-child {
+  margin-bottom: 0;
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+}
+
+/* ── skeletons: in place, never a full-page replacement ── */
+
+.log-skeleton {
+  border-top: 1px solid var(--rule);
+}
+
+.skel-entry {
+  border-bottom: 1px solid var(--rule);
+  padding: var(--space-6) 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.skel-line {
+  height: 14px;
+  background: var(--rule);
+}
+
+/* C1 — the refreshing state used to dim the whole feed to opacity 0.5, which
+   measured 3.20:1 for body text and 2.14:1 for muted text against the bone
+   ground. No opacity value clears AA for both, so the dim is deleted; the
+   state is carried by aria-busy and the progress readout instead. */
+
+/* ── responsive ── */
+
+@media (max-width: 640px) {
+  .log-controls {
+    gap: var(--space-4);
+  }
+
+  .field {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .log-add-form {
+    width: 100%;
+  }
+
+  .entry {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-4) 0;
+  }
+
+  .entry-count {
+    grid-row: auto;
+    grid-column: 1;
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--space-2);
+    text-align: start;
+  }
+
+  .entry-count-l {
+    margin-top: 0;
+  }
+
+  .entry-actions {
+    gap: var(--space-3) var(--space-4);
+  }
+
+  .log-empty {
+    padding: var(--space-6);
+  }
+}

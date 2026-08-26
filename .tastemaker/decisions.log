@@ -1,0 +1,27 @@
+# Tastemaker decision log — FindAJob
+# Append-only. Never edit past lines; add a new entry instead.
+# Format: <date> | <status> | <surface> | <axis> | <choice> | <reason>
+
+2026-08-26 | kept | whole-product | direction | "The Campaign Log" (Warm Humanist / Stripe Press anchor) over "Flight Deck" (Information Architecture) and "Plain Text" (Brutalist) | User picked B from three differentiated schools after a 42-finding audit. Chose the emotional register over the density-first option, knowing the density tradeoff was stated explicitly.
+
+2026-08-26 | kept | typography | italic | Roman headings; italic confined to marginalia labels and body emphasis | Direct conflict between the Stripe Press "italic everywhere" instinct and anti-slop gate 38. Gate won: all-italic warm serif is a named generated-design tell, and warm-serif-on-cream is the aesthetic most exposed to it.
+
+2026-08-26 | kept | typography | families | Two families (Newsreader via opsz for all content, Public Sans for chrome) instead of the three the direction proposed | Newsreader's optical-size axis carries display and text honestly from one family. Stays well inside gate 39's cap and produces two typographic voices rather than three files.
+
+2026-08-26 | kept | motion | duration | 120-240ms, revised down from the direction's proposed 400-600ms crossfades; resume sheet does not rotate on hover | Motion gate: high-frequency UI must feel instant, and this is an app shell opened daily. The original timing was written for a marketing page.
+
+2026-08-26 | kept | color | text-muted | #75705F -> #5F5A4C | Original failed at 4.24:1 on the bone ground, where marginalia actually lives. Lightness nudge within the same warm-olive hue family, per the skill's repair order.
+
+2026-08-26 | rejected | color | tertiary text tier | #8A8578 as a faint tier on the bone ground | Measured 3.15:1. No legal faint tier exists on bone. De-emphasis now carried by size, weight, and italic instead of a lighter tint.
+
+2026-08-26 | kept | color | semantic palette | No red for errors, no green for success. Sienna and teal carry every state. | Adding a fifth colour breaks the recipe's restricted-palette rule, and sienna already reads as consequential in this palette.
+
+2026-08-26 | kept | structure | cards | Entries in a log, not cards in a grid; no sidebar | Audit IA-3 showed nav collapses to one item once Settings is cut. Rather than prop up a one-item nav, the shell became a masthead and postings became the home screen.
+
+2026-08-26 | kept | assets | imagery | No photography and no illustration anywhere; the rendered resume sheet is the only image | Honest answer rather than filling the slot. This product has nothing to photograph and nothing worth illustrating. Recorded so a later session doesn't "fix" the gap with stock art or unDraw figures.
+
+2026-08-26 | pending-review | assets | resume renderer | Rendering a real DOCX/PDF first page in the browser as the anchor asset | This is the direction's load-bearing dependency and genuine engineering work. If infeasible, it is a signal to revisit the direction, not to substitute a placeholder. Needs a feasibility call before implementation starts.
+
+2026-08-26 | pending-review | structure | density | Editorial entries at 17px/1.65 prose for a triage task the audit says is density-bound | The chosen direction is the lowest-density of the three. Mitigated by compressing all metadata into a 12px marginalia rail, but the tension is permanent and should be re-checked against real data volume once entries accumulate.
+
+2026-08-26 | kept | buttons | affordance | Type-led buttons: solid sienna fill for primary, text-plus-thickening-underline for secondary/destructive/quiet | Asked directly whether to swap secondary to bordered; user kept the type-led treatment. Quieter than conventional button affordance, which is the intent for a logbook.

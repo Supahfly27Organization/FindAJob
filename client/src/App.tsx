@@ -7,15 +7,21 @@ import './App.css';
 export default function App() {
   return (
     <div className="app">
-      <nav className="app-nav">
-        <NavLink to="/titles" className={({ isActive }) => (isActive ? 'active' : '')}>
-          Position Titles
-        </NavLink>
-        <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
-          Settings
-        </NavLink>
-      </nav>
-      <main className="app-main">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+      <header className="app-masthead">
+        <span className="app-wordmark">FindAJob</span>
+        <nav className="app-nav" aria-label="Sections">
+          <NavLink to="/titles" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Position Titles
+          </NavLink>
+          <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Settings
+          </NavLink>
+        </nav>
+      </header>
+      <main className="app-main" id="main">
         <Routes>
           <Route path="/" element={<Navigate to="/titles" replace />} />
           <Route path="/titles" element={<PositionTitlesPage />} />

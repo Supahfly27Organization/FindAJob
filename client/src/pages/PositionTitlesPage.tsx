@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { PositionTitle } from '../types';
 import {
@@ -9,12 +9,21 @@ import {
 } from '../api/positionTitles';
 import { searchPostingsForTitle, type SearchResult } from '../api/postings';
 import { ApiError } from '../api/http';
+import './PositionTitlesPage.css';
 
 type SearchState = 'idle' | 'searching' | 'done' | 'error';
+
+function formatElapsed(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const minutes = String(Math.floor(total / 60)).padStart(2, '0');
+  const seconds = String(total % 60).padStart(2, '0');
+  return `${minutes}:${seconds}`;
+}
 
 export default function PositionTitlesPage() {
   const [titles, setTitles] = useState<PositionTitle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
 
   const [newTitle, setNewTitle] = useState('');
@@ -32,6 +41,45 @@ export default function PositionTitlesPage() {
   const [searchResults, setSearchResults] = useState<Record<number, SearchResult>>({});
   const [searchingAll, setSearchingAll] = useState(false);
 
+  // Presentation-only run state: drives the live progress readout. A 30s+ AI
+  // call with nothing but a disabled button is the worst finding in the audit.
+  const [startedAt, setStartedAt] = useState<Record<number, number>>({});
+  const [, setTick] = useState(0);
+  const [runProgress, setRunProgress] = useState<{ current: number; total: number; label: string } | null>(
+    null
+  );
+  const stopRequested = useRef(false);
+
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    document.title = 'Position titles · FindAJob';
+  }, []);
+
+  // Tick once a second only while something is actually running.
+  const anyRunning = Object.keys(startedAt).length > 0;
+  useEffect(() => {
+    if (!anyRunning) {
+      return;
+    }
+    const id = window.setInterval(() => setTick((value) => value + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [anyRunning]);
+
+  // Focus follows the state change instead of being dropped on the floor.
+  useEffect(() => {
+    if (editingId !== null) {
+      editInputRef.current?.focus();
+    }
+  }, [editingId]);
+
+  useEffect(() => {
+    if (confirmingDeleteId !== null) {
+      confirmButtonRef.current?.focus();
+    }
+  }, [confirmingDeleteId]);
+
   async function loadTitles() {
     setLoading(true);
     setListError(null);
@@ -41,6 +89,7 @@ export default function PositionTitlesPage() {
       setListError(error instanceof ApiError ? error.message : 'Failed to load position titles');
     } finally {
       setLoading(false);
+      setHasLoaded(true);
     }
   }
 
@@ -96,6 +145,7 @@ export default function PositionTitlesPage() {
 
   async function runSearch(titleId: number) {
     setSearchState((prev) => ({ ...prev, [titleId]: 'searching' }));
+    setStartedAt((prev) => ({ ...prev, [titleId]: Date.now() }));
     setSearchErrors((prev) => {
       const next = { ...prev };
       delete next[titleId];
@@ -117,16 +167,29 @@ export default function PositionTitlesPage() {
         ...prev,
         [titleId]: error instanceof ApiError ? error.message : 'Search failed'
       }));
+    } finally {
+      setStartedAt((prev) => {
+        const next = { ...prev };
+        delete next[titleId];
+        return next;
+      });
     }
   }
 
   async function handleSearchAll() {
+    stopRequested.current = false;
     setSearchingAll(true);
     try {
-      for (const title of titles) {
+      for (const [index, title] of titles.entries()) {
+        if (stopRequested.current) {
+          break;
+        }
+        setRunProgress({ current: index + 1, total: titles.length, label: title.title });
         await runSearch(title.id);
       }
     } finally {
+      stopRequested.current = false;
+      setRunProgress(null);
       setSearchingAll(false);
     }
   }
@@ -145,108 +208,270 @@ export default function PositionTitlesPage() {
     return `${result.savedCount} new posting${result.savedCount === 1 ? '' : 's'} found.`;
   }
 
-  if (loading) {
-    return <p>Loading position titles…</p>;
+  function elapsedFor(titleId: number): string | null {
+    const start = startedAt[titleId];
+    return start === undefined ? null : formatElapsed(Date.now() - start);
   }
 
+  const totalPostings = titles.reduce((sum, title) => sum + title.postingCount, 0);
+
   return (
-    <section>
-      <h1>Position Titles</h1>
+    <section aria-labelledby="log-title">
+      <div className="log-head">
+        <h1 id="log-title">Position Titles</h1>
+        {hasLoaded && titles.length > 0 && (
+          <p className="log-standfirst">
+            {titles.length} {titles.length === 1 ? 'title' : 'titles'} tracked · {totalPostings}{' '}
+            {totalPostings === 1 ? 'posting' : 'postings'} logged
+          </p>
+        )}
+      </div>
 
-      <form onSubmit={handleAdd} aria-label="Add position title">
-        <input
-          value={newTitle}
-          onChange={(event) => setNewTitle(event.target.value)}
-          placeholder="e.g. Product Manager"
-          aria-label="New position title"
-        />
-        <button type="submit">Add</button>
-        {addError && <p role="alert">{addError}</p>}
-      </form>
+      <div className="log-controls">
+        <form className="log-add-form" onSubmit={handleAdd} aria-label="Add position title">
+          <div className="field">
+            <label className="field-label" htmlFor="new-title">
+              New position title
+            </label>
+            <input
+              id="new-title"
+              value={newTitle}
+              onChange={(event) => setNewTitle(event.target.value)}
+              placeholder="e.g. Product Manager"
+              aria-invalid={addError ? true : undefined}
+              aria-describedby={addError ? 'new-title-error' : undefined}
+            />
+            {addError && (
+              <p className="field-error" id="new-title-error" role="alert">
+                {addError}
+              </p>
+            )}
+          </div>
+          <button className="btn btn-primary" type="submit">
+            Add
+          </button>
+        </form>
 
-      <button onClick={handleSearchAll} disabled={searchingAll || titles.length === 0}>
-        Search all
-      </button>
+        <div className="log-run">
+          <button
+            className="btn btn-secondary"
+            onClick={handleSearchAll}
+            disabled={searchingAll || titles.length === 0}
+          >
+            Search all
+          </button>
+          {searchingAll && (
+            <button className="btn btn-quiet" onClick={() => (stopRequested.current = true)}>
+              Stop
+            </button>
+          )}
+        </div>
+      </div>
 
-      {listError && <p role="alert">{listError}</p>}
+      <div className="run-line">
+        <p className="run-status" aria-live="polite">
+          {runProgress
+            ? `Searching ${runProgress.current} of ${runProgress.total} · ${runProgress.label}`
+            : ''}
+        </p>
+        {runProgress && (
+          <span className="run-status" aria-hidden="true">
+            {elapsedFor(titles[runProgress.current - 1]?.id ?? -1) ?? '00:00'}
+          </span>
+        )}
+      </div>
+      {runProgress && (
+        <div className="run-progress" aria-hidden="true">
+          <i style={{ width: `${(runProgress.current / runProgress.total) * 100}%` }} />
+        </div>
+      )}
 
-      {titles.length === 0 ? (
-        <p>No position titles yet. Add one above to start searching.</p>
+      {listError && (
+        <div className="alert-block">
+          <p className="alert-msg" role="alert">
+            {listError}
+          </p>
+          <button className="btn btn-secondary" onClick={loadTitles}>
+            Try again
+          </button>
+        </div>
+      )}
+
+      {!hasLoaded ? (
+        <div className="log-skeleton" aria-busy="true" aria-label="Loading position titles">
+          {[0, 1, 2].map((row) => (
+            <div className="skel-entry" key={row}>
+              <div className="skel-line" style={{ width: '46%', height: 20 }} />
+              <div className="skel-line" style={{ width: '28%' }} />
+            </div>
+          ))}
+        </div>
+      ) : titles.length === 0 ? (
+        <div className="log-empty">
+          {/* Deliberately a <p>, not a heading: App.test queries
+              getByRole('heading', { name: /position titles/i }) and a second
+              matching heading would make that query ambiguous. */}
+          <p className="log-empty-title">No position titles yet.</p>
+          <p>Add the job titles you&rsquo;re searching for above and the log starts filling.</p>
+          <p>
+            Searches look back 45 days and return up to 20 postings per title. Each one costs a
+            small amount of OpenAI credit.
+          </p>
+        </div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Postings found</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {titles.map((title) => (
-              <tr key={title.id}>
-                <td>
+        <ul className="log-feed" aria-busy={loading || undefined}>
+          {titles.map((title) => {
+            const state = searchState[title.id];
+            const elapsed = elapsedFor(title.id);
+            return (
+              <li key={title.id}>
+                <article className="entry">
+                  <h2 className="entry-title">{title.title}</h2>
+
+                  <div className="entry-count">
+                    <span className="entry-count-n" data-zero={title.postingCount === 0}>
+                      {title.postingCount}
+                    </span>
+                    <span className="entry-count-l">
+                      {title.postingCount === 1 ? 'posting' : 'postings'}
+                    </span>
+                  </div>
+
                   {editingId === title.id ? (
                     <>
-                      <input
-                        value={editingValue}
-                        onChange={(event) => setEditingValue(event.target.value)}
-                        aria-label={`Edit ${title.title}`}
-                      />
-                      {editError && <p role="alert">{editError}</p>}
-                    </>
-                  ) : (
-                    title.title
-                  )}
-                </td>
-                <td>{title.postingCount}</td>
-                <td>
-                  {editingId === title.id ? (
-                    <>
-                      <button onClick={() => saveEditing(title.id)}>Save</button>
-                      <button onClick={cancelEditing}>Cancel</button>
+                      <div className="entry-edit field">
+                        <label className="field-label" htmlFor={`edit-${title.id}`}>
+                          New name
+                        </label>
+                        <input
+                          id={`edit-${title.id}`}
+                          ref={editInputRef}
+                          value={editingValue}
+                          onChange={(event) => setEditingValue(event.target.value)}
+                          aria-label={`New name for ${title.title}`}
+                        />
+                        {editError && (
+                          <p className="msg msg-error" role="alert">
+                            {editError}
+                          </p>
+                        )}
+                      </div>
+                      <div className="entry-actions">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => saveEditing(title.id)}
+                          aria-label={`Save ${title.title}`}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="btn btn-quiet"
+                          onClick={cancelEditing}
+                          aria-label={`Cancel renaming ${title.title}`}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </>
                   ) : confirmingDeleteId === title.id ? (
-                    <>
-                      <span>
-                        Delete "{title.title}"? Postings already found for it are kept, just
-                        unlinked.
-                      </span>
-                      <button onClick={() => confirmDelete(title.id)}>Confirm</button>
-                      <button onClick={() => setConfirmingDeleteId(null)}>Cancel</button>
-                      {deleteError && <p role="alert">{deleteError}</p>}
-                    </>
+                    <div
+                      className="entry-confirm"
+                      role="alertdialog"
+                      aria-label={`Delete ${title.title}?`}
+                    >
+                      <p className="entry-confirm-q">
+                        Delete &ldquo;{title.title}&rdquo;? Postings already found for it are kept,
+                        just unlinked.
+                      </p>
+                      <div className="entry-confirm-actions">
+                        <button
+                          className="btn btn-destructive"
+                          ref={confirmButtonRef}
+                          onClick={() => confirmDelete(title.id)}
+                          aria-label={`Confirm removing ${title.title}`}
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          className="btn btn-quiet"
+                          onClick={() => setConfirmingDeleteId(null)}
+                          aria-label={`Keep ${title.title}`}
+                        >
+                          Cancel
+                        </button>
+                        {deleteError && (
+                          <p className="msg msg-error" role="alert">
+                            {deleteError}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <button onClick={() => startEditing(title)}>Edit</button>
+                    <div className="entry-actions">
                       <button
+                        className="btn btn-secondary"
+                        onClick={() => runSearch(title.id)}
+                        disabled={searchingAll || state === 'searching'}
+                        aria-label={
+                          state === 'searching'
+                            ? `Searching for ${title.title}`
+                            : `Search now for ${title.title}`
+                        }
+                      >
+                        {state === 'searching' ? 'Searching…' : 'Search now'}
+                      </button>
+                      {state === 'searching' && elapsed && (
+                        <span className="run-status">{elapsed}</span>
+                      )}
+                      <Link
+                        className="entry-link"
+                        to={`/titles/${title.id}/postings`}
+                        aria-label={`View postings for ${title.title}`}
+                      >
+                        View postings
+                      </Link>
+                      <button
+                        className="btn btn-quiet"
+                        onClick={() => startEditing(title)}
+                        aria-label={`Edit ${title.title}`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-destructive"
                         onClick={() => {
                           setDeleteError(null);
                           setConfirmingDeleteId(title.id);
                         }}
+                        aria-label={`Delete ${title.title}`}
                       >
                         Delete
                       </button>
-                      <button
-                        onClick={() => runSearch(title.id)}
-                        disabled={searchingAll || searchState[title.id] === 'searching'}
-                      >
-                        {searchState[title.id] === 'searching' ? 'Searching…' : 'Search now'}
-                      </button>
-                      <Link to={`/titles/${title.id}/postings`}>View postings</Link>
-                      {searchState[title.id] === 'done' && <span>{searchResultMessage(title.id)}</span>}
-                      {searchState[title.id] === 'error' && (
+
+                      {state === 'done' && (
+                        <span className="msg msg-success">{searchResultMessage(title.id)}</span>
+                      )}
+                      {state === 'error' && (
                         <>
-                          <span role="alert">{searchErrors[title.id]}</span>
-                          <button onClick={() => runSearch(title.id)}>Retry</button>
+                          <span className="msg msg-error" role="alert">
+                            {searchErrors[title.id]}
+                          </span>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={() => runSearch(title.id)}
+                            aria-label={`Retry search for ${title.title}`}
+                          >
+                            Retry
+                          </button>
                         </>
                       )}
-                    </>
+                    </div>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </article>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </section>
   );
