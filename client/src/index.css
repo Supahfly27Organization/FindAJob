@@ -181,5 +181,9 @@ code {
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    /* Without this, a looping animation collapsed to 0.01ms would spin
+       thousands of times a second instead of stopping. */
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
   }
 }

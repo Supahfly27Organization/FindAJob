@@ -102,6 +102,7 @@
   padding: var(--space-3) var(--space-6);
   min-height: 44px;
   transition:
+    transform var(--duration-press) var(--ease-out),
     background var(--duration-press) var(--ease-out),
     color var(--duration-press) var(--ease-out),
     box-shadow var(--duration-press) var(--ease-out);
@@ -194,8 +195,10 @@
 .run-progress > i {
   display: block;
   height: 2px;
+  width: 100%;
   background: var(--sienna);
-  transition: width var(--duration-panel) var(--ease-out);
+  transform-origin: left center;
+  transition: transform var(--duration-panel) var(--ease-out);
 }
 
 /* ── the feed ── */
@@ -287,7 +290,13 @@
   min-height: 44px;
   display: inline-flex;
   align-items: center;
-  transition: box-shadow var(--duration-press) var(--ease-out);
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    box-shadow var(--duration-press) var(--ease-out);
+}
+
+.entry-link:active {
+  transform: scale(0.97);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -464,5 +473,91 @@
 
   .log-empty {
     padding: var(--space-6);
+  }
+}
+
+
+/* ── Motion ───────────────────────────────────────────────────────────────
+   Curves and durations come from the tokens in index.css; nothing here
+   invents its own. Every rule below is inside a reduced-motion guard.
+
+   Deliberately NOT animated:
+   - route/nav changes (this shell has two destinations and the
+     titles -> postings -> back loop runs constantly; a transition would
+     tax every trip)
+   - the elapsed clock and the posting counts (data being read)
+   - status and filter changes elsewhere in the app
+   ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Rows entering the log. Runs per <li> mount, so it plays once on first
+     paint and again only for a genuinely new row — refreshes reconcile by
+     key and don't re-trigger it. Purpose: bridge the skeleton-to-content
+     swap, which otherwise teleports. */
+  .log-feed > li {
+    animation: entry-in 200ms var(--ease-out) both;
+  }
+
+  .log-feed > li:nth-child(1) { animation-delay: 0ms; }
+  .log-feed > li:nth-child(2) { animation-delay: 40ms; }
+  .log-feed > li:nth-child(3) { animation-delay: 80ms; }
+  .log-feed > li:nth-child(4) { animation-delay: 120ms; }
+  .log-feed > li:nth-child(5) { animation-delay: 160ms; }
+  .log-feed > li:nth-child(6) { animation-delay: 200ms; }
+  .log-feed > li:nth-child(7) { animation-delay: 240ms; }
+  .log-feed > li:nth-child(8) { animation-delay: 280ms; }
+  /* Cap the cascade at 8 so a long list never waits on decoration. */
+  .log-feed > li:nth-child(n + 9) { animation-delay: 280ms; }
+
+  @keyframes entry-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  /* In-flow reveals: the delete confirmation, the rename field, the search
+     result, the Stop control. Each replaces something that was already
+     there, so the job is to stop the swap reading as a teleport. */
+  .entry-confirm,
+  .entry-edit,
+  .msg-success,
+  .msg-error,
+  .alert-block,
+  .field-error,
+  .btn-stop {
+    animation: reveal 180ms var(--ease-out) both;
+  }
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+  }
+
+  /* Loading is the one place constant motion earns its keep: it separates
+     "still working" from "stalled" during a call that runs 30s+. */
+  .skel-line {
+    animation: skel-breathe 1400ms var(--ease-in-out) infinite;
+  }
+
+  @keyframes skel-breathe {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+}
+
+/* Reduced motion keeps the states legible and drops the movement: the
+   skeleton holds a steady mid opacity rather than pulsing, and entrances
+   resolve instantly instead of sliding. */
+@media (prefers-reduced-motion: reduce) {
+  .skel-line {
+    opacity: 0.6;
   }
 }

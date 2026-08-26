@@ -261,7 +261,10 @@ export default function PositionTitlesPage() {
             Search all
           </button>
           {searchingAll && (
-            <button className="btn btn-quiet" onClick={() => (stopRequested.current = true)}>
+            <button
+              className="btn btn-quiet btn-stop"
+              onClick={() => (stopRequested.current = true)}
+            >
               Stop
             </button>
           )}
@@ -282,7 +285,7 @@ export default function PositionTitlesPage() {
       </div>
       {runProgress && (
         <div className="run-progress" aria-hidden="true">
-          <i style={{ width: `${(runProgress.current / runProgress.total) * 100}%` }} />
+          <i style={{ transform: `scaleX(${runProgress.current / runProgress.total})` }} />
         </div>
       )}
 
