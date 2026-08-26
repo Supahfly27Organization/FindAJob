@@ -22,7 +22,7 @@ describe('createDb', () => {
       .all()
       .map((row) => row.name)
       .filter((name) => name !== 'sqlite_sequence');
-    expect(tables).toEqual(['position_titles', 'postings', 'settings']);
+    expect(tables).toEqual(['position_titles', 'postings']);
     db.close();
   });
 

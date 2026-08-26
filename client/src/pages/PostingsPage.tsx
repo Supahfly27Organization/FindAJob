@@ -7,11 +7,14 @@ import {
   markPostingViewed,
   searchPostingsForTitle,
   updatePostingStatus,
-  adaptResumeForPosting
+  adaptResumeForPosting,
+  uploadAppliedCv
 } from '../api/postings';
 import { ApiError } from '../api/http';
 
-const EDITABLE_STATUSES = ['New', 'In Progress', 'Rejected'] as const;
+// "Applied" is selectable, but choosing it opens the CV-upload panel rather than
+// setting the status directly — the status and the CV on file move together (Story 3.3).
+const STATUSES = ['New', 'Applied', 'In Progress', 'Rejected'] as const;
 const DESCRIPTION_PREVIEW_LENGTH = 120;
 
 export default function PostingsPage() {
@@ -30,6 +33,11 @@ export default function PostingsPage() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+
+  const [appliedCvPostingId, setAppliedCvPostingId] = useState<number | null>(null);
+  const [appliedCvFile, setAppliedCvFile] = useState<File | null>(null);
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const [appliedCvError, setAppliedCvError] = useState<string | null>(null);
 
   const [adaptingId, setAdaptingId] = useState<number | null>(null);
   const [adaptConfirmId, setAdaptConfirmId] = useState<number | null>(null);
@@ -89,8 +97,43 @@ export default function PostingsPage() {
     }
   }
 
+  function openAppliedCvPanel(posting: Posting) {
+    setAppliedCvPostingId(posting.id);
+    setAppliedCvFile(null);
+    setAppliedCvError(null);
+  }
+
+  function closeAppliedCvPanel() {
+    setAppliedCvPostingId(null);
+    setAppliedCvFile(null);
+    setAppliedCvError(null);
+  }
+
+  async function handleAppliedCvUpload(posting: Posting) {
+    if (!appliedCvFile) {
+      setAppliedCvError('Select the CV file you used for this application.');
+      return;
+    }
+    setUploadingCv(true);
+    setAppliedCvError(null);
+    try {
+      const updated = await uploadAppliedCv(posting.id, appliedCvFile);
+      setPostings((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      closeAppliedCvPanel();
+    } catch (error) {
+      // Panel stays open on failure — the status was not changed server-side either.
+      setAppliedCvError(error instanceof ApiError ? error.message : 'Failed to upload the CV');
+    } finally {
+      setUploadingCv(false);
+    }
+  }
+
   async function handleStatusChange(posting: Posting, status: string) {
     setStatusError(null);
+    if (status === 'Applied') {
+      openAppliedCvPanel(posting);
+      return;
+    }
     try {
       const updated = await updatePostingStatus(posting.id, status);
       setPostings((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -170,7 +213,7 @@ export default function PostingsPage() {
               <th>Location</th>
               <th>Source</th>
               <th>Actions</th>
-              <th>Resume</th>
+              <th>Documents</th>
             </tr>
           </thead>
           <tbody>
@@ -192,20 +235,50 @@ export default function PostingsPage() {
                   <td>{posting.publishedDate ?? '—'}</td>
                   <td>{posting.viewed ? 'Yes' : 'No'}</td>
                   <td>
-                    {posting.status === 'Applied' ? (
-                      posting.status
-                    ) : (
-                      <select
-                        value={posting.status}
-                        onChange={(event) => handleStatusChange(posting, event.target.value)}
-                        aria-label={`Status for ${posting.postingTitle}`}
-                      >
-                        {EDITABLE_STATUSES.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
+                    <select
+                      value={posting.status}
+                      onChange={(event) => handleStatusChange(posting, event.target.value)}
+                      aria-label={`Status for ${posting.postingTitle}`}
+                    >
+                      {STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                    {appliedCvPostingId === posting.id && (
+                      <div role="dialog" aria-label={`Upload the CV you used for ${posting.postingTitle}`}>
+                        <p>
+                          Upload the CV file you actually used for this application (.docx, .pdf, .txt or
+                          .md).
+                        </p>
+                        {posting.appliedCvPath && (
+                          <p>
+                            This replaces the CV already on file
+                            {posting.appliedCvOriginalName ? ` (${posting.appliedCvOriginalName})` : ''}.
+                          </p>
+                        )}
+                        <input
+                          type="file"
+                          accept=".docx,.pdf,.txt,.md"
+                          aria-label={`CV file used for ${posting.postingTitle}`}
+                          onChange={(event) => setAppliedCvFile(event.target.files?.[0] ?? null)}
+                        />
+                        <button
+                          onClick={() => handleAppliedCvUpload(posting)}
+                          disabled={uploadingCv}
+                          aria-label={`Upload applied CV for ${posting.postingTitle}`}
+                        >
+                          {uploadingCv ? 'Uploading…' : 'Upload and mark Applied'}
+                        </button>{' '}
+                        <button
+                          onClick={closeAppliedCvPanel}
+                          aria-label={`Cancel applied CV upload for ${posting.postingTitle}`}
+                        >
+                          Cancel
+                        </button>
+                        {appliedCvError && <p role="alert">{appliedCvError}</p>}
+                      </div>
                     )}
                   </td>
                   <td>{posting.company ?? '—'}</td>
@@ -268,6 +341,18 @@ export default function PostingsPage() {
                       </button>
                     )}
                     {adaptErrors[posting.id] && <p role="alert">{adaptErrors[posting.id]}</p>}
+                    {posting.appliedCvPath && (
+                      <div>
+                        <a
+                          href={`/api/postings/${posting.id}/applied-cv`}
+                          download
+                          aria-label={`Download applied CV for ${posting.postingTitle}`}
+                        >
+                          Download applied CV
+                          {posting.appliedCvOriginalName ? ` (${posting.appliedCvOriginalName})` : ''}
+                        </a>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

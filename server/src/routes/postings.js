@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import path from 'node:path';
+import multer from 'multer';
 import { searchPostingsForTitle } from '../services/searchService.js';
 import {
   listPostingsForTitle,
@@ -8,7 +9,10 @@ import {
   getPostingById
 } from '../services/postingService.js';
 import { adaptResumeForPosting } from '../services/resumeAdaptationService.js';
-import { NotFoundError } from '../errors.js';
+import { saveAppliedCv, getAppliedCv } from '../services/appliedCvService.js';
+import { NotFoundError, ValidationError } from '../errors.js';
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 export function registerPostingRoutes(app, db) {
   const router = Router();
@@ -61,6 +65,37 @@ export function registerPostingRoutes(app, db) {
       }
       const filename = `adapted-resume${path.extname(posting.adaptedResumePath)}`;
       res.download(posting.adaptedResumePath, filename, (error) => {
+        if (error) next(error);
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/postings/:id/applied-cv', (req, res, next) => {
+    upload.single('file')(req, res, (uploadError) => {
+      if (uploadError) {
+        if (uploadError instanceof multer.MulterError) {
+          const message =
+            uploadError.code === 'LIMIT_FILE_SIZE'
+              ? 'Applied CV must be 10MB or smaller.'
+              : 'Could not process the uploaded file.';
+          return next(new ValidationError(message));
+        }
+        return next(uploadError);
+      }
+      try {
+        res.json(saveAppliedCv(db, Number(req.params.id), req.file));
+      } catch (error) {
+        next(error);
+      }
+    });
+  });
+
+  router.get('/postings/:id/applied-cv', (req, res, next) => {
+    try {
+      const cv = getAppliedCv(db, Number(req.params.id));
+      res.download(cv.path, cv.originalName, (error) => {
         if (error) next(error);
       });
     } catch (error) {

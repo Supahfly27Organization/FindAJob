@@ -7,7 +7,8 @@ const EDITABLE_STATUSES = ['New', 'In Progress', 'Rejected'];
 const SELECT_COLUMNS = `id, position_title_id AS positionTitleId, posting_title AS postingTitle,
   description, company, url, aggregator_name AS aggregatorName, aggregator_url AS aggregatorUrl,
   location, published_date AS publishedDate, found_at AS foundAt,
-  viewed, status, adapted_resume_path AS adaptedResumePath, applied_cv_path AS appliedCvPath`;
+  viewed, status, adapted_resume_path AS adaptedResumePath, applied_cv_path AS appliedCvPath,
+  applied_cv_original_name AS appliedCvOriginalName`;
 
 function toPosting(row) {
   return { ...row, viewed: Boolean(row.viewed) };
@@ -216,11 +217,20 @@ export function setAdaptedResumePath(db, id, path) {
   db.prepare('UPDATE postings SET adapted_resume_path = ? WHERE id = ?').run(path, id);
 }
 
+// Marking a posting Applied is only reachable through the applied-CV upload flow
+// (appliedCvService.saveAppliedCv), so the status always matches a CV on file.
+export function setAppliedCv(db, id, filePath, originalName) {
+  db.prepare(
+    `UPDATE postings SET applied_cv_path = ?, applied_cv_original_name = ?, status = 'Applied' WHERE id = ?`
+  ).run(filePath, originalName, id);
+  return getPostingById(db, id);
+}
+
 export function updatePostingStatus(db, id, status) {
   getPostingById(db, id);
   if (!EDITABLE_STATUSES.includes(status)) {
     throw new ValidationError(
-      `Status must be one of: ${EDITABLE_STATUSES.join(', ')}. Marking a posting Applied requires uploading the CV you used (coming soon).`
+      `Status must be one of: ${EDITABLE_STATUSES.join(', ')}. Marking a posting Applied requires uploading the CV you used.`
     );
   }
   db.prepare('UPDATE postings SET status = ? WHERE id = ?').run(status, id);

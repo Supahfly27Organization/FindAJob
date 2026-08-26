@@ -162,7 +162,7 @@ describe('PositionTitlesPage', () => {
     const user = userEvent.setup();
     mockFetchSequence([
       { status: 200, body: [{ id: 1, title: 'QA Engineer', createdAt: '', postingCount: 0 }] },
-      { status: 400, body: { message: 'Configure your OpenAI API key in Settings before searching.' } }
+      { status: 400, body: { message: 'Set OPENAI_API_KEY in the .env file at the project root, then restart the app.' } }
     ]);
     renderPage();
     await screen.findByText('QA Engineer');
@@ -170,7 +170,7 @@ describe('PositionTitlesPage', () => {
     await user.click(screen.getByRole('button', { name: /search now/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Configure your OpenAI API key in Settings before searching.'
+      'Set OPENAI_API_KEY in the .env file at the project root, then restart the app.'
     );
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });

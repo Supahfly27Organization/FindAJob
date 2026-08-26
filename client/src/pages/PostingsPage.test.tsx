@@ -51,7 +51,8 @@ const POSTING = {
   viewed: false,
   status: 'New',
   adaptedResumePath: null,
-  appliedCvPath: null
+  appliedCvPath: null,
+  appliedCvOriginalName: null
 };
 
 describe('PostingsPage', () => {
@@ -143,7 +144,7 @@ describe('PostingsPage', () => {
     mockFetchSequence([
       { status: 200, body: TITLES },
       { status: 200, body: [] },
-      { status: 400, body: { message: 'Configure your OpenAI API key in Settings before searching.' } }
+      { status: 400, body: { message: 'Set OPENAI_API_KEY in the .env file at the project root, then restart the app.' } }
     ]);
     renderPage();
     await screen.findByText(/no postings found yet/i);
@@ -151,7 +152,7 @@ describe('PostingsPage', () => {
     await user.click(screen.getByRole('button', { name: /search now/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Configure your OpenAI API key in Settings before searching.'
+      'Set OPENAI_API_KEY in the .env file at the project root, then restart the app.'
     );
   });
 
@@ -207,7 +208,7 @@ describe('PostingsPage', () => {
     mockFetchSequence([
       { status: 200, body: TITLES },
       { status: 200, body: [POSTING] },
-      { status: 400, body: { message: 'Configure your resume template in Settings before adapting your resume.' } }
+      { status: 400, body: { message: 'Add your resume as Resume.docx in the project root before adapting your resume.' } }
     ]);
     renderPage();
     await screen.findByText('Senior PM');
@@ -215,7 +216,7 @@ describe('PostingsPage', () => {
     await user.click(screen.getByRole('button', { name: /adapt resume for senior pm/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Configure your resume template in Settings before adapting your resume.'
+      'Add your resume as Resume.docx in the project root before adapting your resume.'
     );
   });
 
@@ -256,5 +257,147 @@ describe('PostingsPage', () => {
 
     expect(screen.getByText(/replace existing adapted resume/i)).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: /download adapted resume for junior pm/i })).toBeInTheDocument();
+  });
+
+  describe('marking a posting Applied', () => {
+    const APPLIED = {
+      ...POSTING,
+      status: 'Applied',
+      appliedCvPath: '/data/applied-cvs/posting-10.docx',
+      appliedCvOriginalName: 'my-cv.docx'
+    };
+
+    async function openUploadPanel() {
+      const user = userEvent.setup();
+      await screen.findByText('Senior PM');
+      await user.selectOptions(screen.getByLabelText(/status for senior pm/i), 'Applied');
+      return user;
+    }
+
+    it('opens the CV upload panel instead of changing status immediately', async () => {
+      mockFetchSequence([
+        { status: 200, body: TITLES },
+        { status: 200, body: [POSTING] }
+      ]);
+      renderPage();
+      await openUploadPanel();
+
+      expect(
+        screen.getByRole('dialog', { name: /upload the cv you used for senior pm/i })
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText(/status for senior pm/i)).toHaveValue('New');
+    });
+
+    it('uploads the CV, marks the posting Applied and shows a download link', async () => {
+      mockFetchSequence([
+        { status: 200, body: TITLES },
+        { status: 200, body: [POSTING] },
+        { status: 200, body: APPLIED }
+      ]);
+      renderPage();
+      const user = await openUploadPanel();
+
+      await user.upload(
+        screen.getByLabelText(/cv file used for senior pm/i),
+        new File(['cv'], 'my-cv.docx', { type: 'application/octet-stream' })
+      );
+      await user.click(screen.getByRole('button', { name: /upload applied cv for senior pm/i }));
+
+      expect(await screen.findByDisplayValue('Applied')).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: /download applied cv for senior pm/i })
+      ).toHaveAttribute('href', '/api/postings/10/applied-cv');
+    });
+
+    it('does not change the status when the panel is cancelled', async () => {
+      mockFetchSequence([
+        { status: 200, body: TITLES },
+        { status: 200, body: [POSTING] }
+      ]);
+      renderPage();
+      const user = await openUploadPanel();
+
+      await user.click(screen.getByRole('button', { name: /cancel applied cv upload for senior pm/i }));
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/status for senior pm/i)).toHaveValue('New');
+    });
+
+    it('requires a file before uploading', async () => {
+      mockFetchSequence([
+        { status: 200, body: TITLES },
+        { status: 200, body: [POSTING] }
+      ]);
+      renderPage();
+      const user = await openUploadPanel();
+
+      await user.click(screen.getByRole('button', { name: /upload applied cv for senior pm/i }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/select the cv file you used/i);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('keeps the panel open and shows the error when the upload fails', async () => {
+      mockFetchSequence([
+        { status: 200, body: TITLES },
+        { status: 200, body: [POSTING] },
+        { status: 400, body: { message: 'Unsupported file format. Supported formats: docx, pdf, txt, md.' } }
+      ]);
+      renderPage();
+      const user = userEvent.setup({ applyAccept: false });
+      await screen.findByText('Senior PM');
+      await user.selectOptions(screen.getByLabelText(/status for senior pm/i), 'Applied');
+
+      await user.upload(
+        screen.getByLabelText(/cv file used for senior pm/i),
+        new File(['cv'], 'my-cv.pages', { type: 'application/octet-stream' })
+      );
+      await user.click(screen.getByRole('button', { name: /upload applied cv for senior pm/i }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Unsupported file format. Supported formats: docx, pdf, txt, md.'
+      );
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByLabelText(/status for senior pm/i)).toHaveValue('New');
+    });
+
+    it('warns that an existing applied CV will be replaced', async () => {
+      mockFetchSequence([
+        { status: 200, body: TITLES },
+        { status: 200, body: [APPLIED] }
+      ]);
+      renderPage();
+      await openUploadPanel();
+
+      expect(screen.getByText(/this replaces the cv already on file \(my-cv\.docx\)/i)).toBeInTheDocument();
+    });
+
+    it('shows no applied-CV download link for a posting that was never applied to', async () => {
+      mockFetchSequence([
+        { status: 200, body: TITLES },
+        { status: 200, body: [POSTING] }
+      ]);
+      renderPage();
+      await screen.findByText('Senior PM');
+
+      expect(screen.queryByRole('link', { name: /download applied cv/i })).not.toBeInTheDocument();
+    });
+
+    it('lets an Applied posting be moved to another status directly', async () => {
+      const user = userEvent.setup();
+      mockFetchSequence([
+        { status: 200, body: TITLES },
+        { status: 200, body: [APPLIED] },
+        { status: 200, body: { ...APPLIED, status: 'Rejected' } }
+      ]);
+      renderPage();
+      await screen.findByText('Senior PM');
+
+      await user.selectOptions(screen.getByLabelText(/status for senior pm/i), 'Rejected');
+
+      expect(await screen.findByDisplayValue('Rejected')).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 });

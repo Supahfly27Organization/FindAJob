@@ -1,7 +1,32 @@
 {
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "Write-Output '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"GitHub issue workflow: after product-superpowers stories are approved, use the github-issue-sync skill to create GitHub issues (epics + linked stories) from the approved stories doc. Use github-issue-start right before beginning implementation on a tracked issue, and github-issue-commit when closing out that work.\"}}'",
+            "shell": "powershell"
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "superpowers@superpowers-dev": true,
-    "product-superpowers@product-superpowers-marketplace": true
+    "product-superpowers@product-superpowers-marketplace": true,
+    "designpowers@designpowers": true,
+    "web-design-skills@garden-skills": true,
+    "interfaces@interfaces": true,
+    "design-research@designer-skills": true,
+    "design-systems@designer-skills": true,
+    "ux-strategy@designer-skills": true,
+    "ui-design@designer-skills": true,
+    "interaction-design@designer-skills": true,
+    "prototyping-testing@designer-skills": true,
+    "design-ops@designer-skills": true,
+    "designer-toolkit@designer-skills": true,
+    "visual-critique@designer-skills": true
   },
   "extraKnownMarketplaces": {
     "superpowers-dev": {
@@ -15,19 +40,30 @@
         "source": "github",
         "repo": "guhcostan/product-superpowers"
       }
-    }
-  },
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "Write-Output '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"GitHub issue workflow: after product-superpowers stories are approved, use the github-issue-sync skill to create GitHub issues (epics + linked stories) from the approved stories doc. Use github-issue-start right before beginning implementation on a tracked issue, and github-issue-commit when closing out that work.\"}}'",
-            "shell": "powershell"
-          }
-        ]
+    },
+    "designpowers": {
+      "source": {
+        "source": "github",
+        "repo": "Owl-Listener/designpowers"
       }
-    ]
+    },
+    "garden-skills": {
+      "source": {
+        "source": "github",
+        "repo": "ConardLi/garden-skills"
+      }
+    },
+    "interfaces": {
+      "source": {
+        "source": "github",
+        "repo": "jakubkrehel/skills"
+      }
+    },
+    "designer-skills": {
+      "source": {
+        "source": "github",
+        "repo": "Owl-Listener/designer-skills"
+      }
+    }
   }
 }

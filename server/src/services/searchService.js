@@ -1,5 +1,5 @@
 import { ValidationError, UpstreamError } from '../errors.js';
-import { getOpenAiKey } from './settingsService.js';
+import { getOpenAiKey } from '../config.js';
 import { getPositionTitleById } from './positionTitleService.js';
 import { saveSearchResults } from './postingService.js';
 import { searchJobPostings } from './openaiClient.js';
@@ -7,9 +7,9 @@ import { searchJobPostings } from './openaiClient.js';
 export async function searchPostingsForTitle(db, positionTitleId, { fetchPostings = searchJobPostings } = {}) {
   const title = getPositionTitleById(db, positionTitleId);
 
-  const apiKey = getOpenAiKey(db);
+  const apiKey = getOpenAiKey();
   if (!apiKey) {
-    throw new ValidationError('Configure your OpenAI API key in Settings before searching.');
+    throw new ValidationError('Set OPENAI_API_KEY in the .env file at the project root, then restart the app.');
   }
 
   let candidates;
@@ -18,7 +18,7 @@ export async function searchPostingsForTitle(db, positionTitleId, { fetchPosting
   } catch (error) {
     console.error('[search] OpenAI call failed for position title', positionTitleId, error);
     if (error?.status === 401) {
-      throw new ValidationError('Your OpenAI API key was rejected. Update it in Settings.');
+      throw new ValidationError('Your OpenAI API key was rejected. Update OPENAI_API_KEY in .env and restart the app.');
     }
     throw new UpstreamError('Search failed. Please try again.');
   }

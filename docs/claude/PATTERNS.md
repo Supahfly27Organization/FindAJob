@@ -1,12 +1,12 @@
 # Patterns
 
-## Disk-backed local storage, key/value settings
+## Configuration lives in files, not in the app
 
-Anything that needs "one active configured thing" (the OpenAI key, the resume template) is stored as key/value rows in the `settings` table, not a dedicated table — see `settingsService.js` and `resumeTemplateService.js`. Any actual file content (the template, an adapted resume) lives on disk under a directory derived from `config.js`'s `DATA_DIR`, with the settings row/DB column holding just the path.
+There is no Settings page and no `settings` table. The two things that need configuring are edited on disk and read at startup: the OpenAI key from `OPENAI_API_KEY` in the repo-root `.env` (`config.js` loads it via dotenv and exposes `getOpenAiKey()`), and the resume template from `Resume.<docx|pdf|txt|md>` at the repo root (`resumeTemplateService.getResumeTemplateInfo()`). Neither has a DB fallback — when one is missing the app says which file to fix. Content the app itself produces (adapted resumes, applied CVs) still lives on disk under `config.js`'s `DATA_DIR`, with the DB column holding just the path.
 
 ## File uploads
 
-`multer` with `storage: memoryStorage()` handles multipart uploads at the route layer; the resulting `{ originalname, size, buffer }` object is handed to a plain service function (`resumeTemplateService.saveResumeTemplate`) that does all format/size validation and disk writes, so validation logic stays testable without an HTTP layer. On the client, use `apiUpload()` (not `apiFetch()`) for any `FormData` body — see `client/CLAUDE.md`.
+`multer` with `storage: memoryStorage()` handles multipart uploads at the route layer; the resulting `{ originalname, size, buffer }` object is handed to a plain service function (`appliedCvService.saveAppliedCv`) that does all format/size validation and disk writes, so validation logic stays testable without an HTTP layer. On the client, use `apiUpload()` (not `apiFetch()`) for any `FormData` body — see `client/CLAUDE.md`.
 
 ## Disk-backed service tests
 

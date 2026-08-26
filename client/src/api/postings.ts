@@ -1,4 +1,4 @@
-import { apiFetch } from './http';
+import { apiFetch, apiUpload } from './http';
 import type { Posting } from '../types';
 
 export interface SearchResult {
@@ -30,4 +30,12 @@ export function updatePostingStatus(id: number, status: string): Promise<Posting
 
 export function adaptResumeForPosting(id: number): Promise<Posting> {
   return apiFetch<Posting>(`/api/postings/${id}/adapt-resume`, { method: 'POST' });
+}
+
+// Uploading the CV she actually submitted is what moves a posting to "Applied" —
+// there is deliberately no way to set that status without a file (Story 3.3).
+export function uploadAppliedCv(id: number, file: File): Promise<Posting> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload<Posting>(`/api/postings/${id}/applied-cv`, formData);
 }

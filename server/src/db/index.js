@@ -12,7 +12,8 @@ const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
 // schema.sql's CREATE TABLE stays the source of truth for a fresh DB's shape.
 const ADDITIVE_COLUMNS = [
   'ALTER TABLE postings ADD COLUMN aggregator_name TEXT',
-  'ALTER TABLE postings ADD COLUMN aggregator_url TEXT'
+  'ALTER TABLE postings ADD COLUMN aggregator_url TEXT',
+  'ALTER TABLE postings ADD COLUMN applied_cv_original_name TEXT'
 ];
 
 export function createDb(filePath) {

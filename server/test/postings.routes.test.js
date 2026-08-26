@@ -3,7 +3,6 @@ import request from 'supertest';
 import { createApp, errorHandler } from '../src/app.js';
 import { createDb } from '../src/db/index.js';
 import { registerPositionTitleRoutes } from '../src/routes/positionTitles.js';
-import { registerSettingsRoutes } from '../src/routes/settings.js';
 import { registerPostingRoutes } from '../src/routes/postings.js';
 
 vi.mock('../src/services/openaiClient.js', async (importOriginal) => {
@@ -13,7 +12,12 @@ vi.mock('../src/services/openaiClient.js', async (importOriginal) => {
 
 import { searchJobPostings, adaptResumeText } from '../src/services/openaiClient.js';
 import fs from 'node:fs';
-import { RESUME_TEMPLATE_DIR, ADAPTED_RESUMES_DIR } from '../src/config.js';
+import {
+  ADAPTED_RESUMES_DIR,
+  APPLIED_CVS_DIR,
+  RESUME_TEMPLATE_FORMATS,
+  resumeTemplatePathFor
+} from '../src/config.js';
 
 let app;
 
@@ -21,31 +25,40 @@ beforeEach(() => {
   const db = createDb(':memory:');
   app = createApp(db);
   registerPositionTitleRoutes(app, db);
-  registerSettingsRoutes(app, db);
   registerPostingRoutes(app, db);
   app.use(errorHandler);
   vi.mocked(searchJobPostings).mockReset();
   vi.mocked(adaptResumeText).mockReset();
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+function removeResumeTemplates() {
+  for (const format of RESUME_TEMPLATE_FORMATS) {
+    fs.rmSync(resumeTemplatePathFor(format), { force: true });
+  }
+}
+
 async function createTitle(title) {
   const response = await request(app).post('/api/position-titles').send({ title });
   return response.body;
 }
 
-async function configureApiKey() {
-  await request(app).put('/api/settings/openai-key').send({ apiKey: 'sk-test1234567890' });
+function configureApiKey() {
+  vi.stubEnv('OPENAI_API_KEY', 'sk-test1234567890');
 }
 
 async function createPostingWithTemplate() {
   const title = await createTitle('Product Manager');
-  await configureApiKey();
+  configureApiKey();
   vi.mocked(searchJobPostings).mockResolvedValue([
     { postingTitle: 'Senior PM', url: 'https://example.com/job/1' }
   ]);
   await request(app).post(`/api/position-titles/${title.id}/search`);
   const [posting] = (await request(app).get(`/api/position-titles/${title.id}/postings`)).body;
-  await request(app).post('/api/settings/resume-template').attach('file', Buffer.from('Jane Doe'), 'resume.txt');
+  fs.writeFileSync(resumeTemplatePathFor('txt'), 'Jane Doe');
   return posting;
 }
 
@@ -58,7 +71,7 @@ describe('POST /api/position-titles/:id/search', () => {
 
   it('saves postings returned by the search', async () => {
     const title = await createTitle('Product Manager');
-    await configureApiKey();
+    configureApiKey();
     vi.mocked(searchJobPostings).mockResolvedValue([
       { postingTitle: 'Senior PM', url: 'https://example.com/job/1', publishedDate: '2026-08-01' }
     ]);
@@ -70,7 +83,7 @@ describe('POST /api/position-titles/:id/search', () => {
 
   it('returns 502 when the search call fails', async () => {
     const title = await createTitle('Product Manager');
-    await configureApiKey();
+    configureApiKey();
     vi.mocked(searchJobPostings).mockRejectedValue(new Error('boom'));
 
     const response = await request(app).post(`/api/position-titles/${title.id}/search`);
@@ -81,7 +94,7 @@ describe('POST /api/position-titles/:id/search', () => {
 describe('GET /api/position-titles/:id/postings', () => {
   it('lists postings found for a title', async () => {
     const title = await createTitle('Product Manager');
-    await configureApiKey();
+    configureApiKey();
     vi.mocked(searchJobPostings).mockResolvedValue([
       { postingTitle: 'Senior PM', url: 'https://example.com/job/1', publishedDate: '2026-08-01' }
     ]);
@@ -102,7 +115,7 @@ describe('GET /api/position-titles/:id/postings', () => {
 describe('PUT /api/postings/:id/viewed', () => {
   it('marks a posting viewed', async () => {
     const title = await createTitle('Product Manager');
-    await configureApiKey();
+    configureApiKey();
     vi.mocked(searchJobPostings).mockResolvedValue([
       { postingTitle: 'Senior PM', url: 'https://example.com/job/1' }
     ]);
@@ -123,7 +136,7 @@ describe('PUT /api/postings/:id/viewed', () => {
 describe('PUT /api/postings/:id/status', () => {
   it('updates to a valid status', async () => {
     const title = await createTitle('Product Manager');
-    await configureApiKey();
+    configureApiKey();
     vi.mocked(searchJobPostings).mockResolvedValue([
       { postingTitle: 'Senior PM', url: 'https://example.com/job/1' }
     ]);
@@ -139,7 +152,7 @@ describe('PUT /api/postings/:id/status', () => {
 
   it('rejects "Applied" via this endpoint', async () => {
     const title = await createTitle('Product Manager');
-    await configureApiKey();
+    configureApiKey();
     vi.mocked(searchJobPostings).mockResolvedValue([
       { postingTitle: 'Senior PM', url: 'https://example.com/job/1' }
     ]);
@@ -160,7 +173,7 @@ describe('PUT /api/postings/:id/status', () => {
 
 describe('POST /api/postings/:id/adapt-resume', () => {
   afterEach(() => {
-    fs.rmSync(RESUME_TEMPLATE_DIR, { recursive: true, force: true });
+    removeResumeTemplates();
     fs.rmSync(ADAPTED_RESUMES_DIR, { recursive: true, force: true });
   });
 
@@ -179,7 +192,7 @@ describe('POST /api/postings/:id/adapt-resume', () => {
 
   it('rejects when no resume template is configured', async () => {
     const title = await createTitle('Product Manager');
-    await configureApiKey();
+    configureApiKey();
     vi.mocked(searchJobPostings).mockResolvedValue([
       { postingTitle: 'Senior PM', url: 'https://example.com/job/1' }
     ]);
@@ -191,7 +204,7 @@ describe('POST /api/postings/:id/adapt-resume', () => {
   });
 
   it('returns 404 for a missing posting', async () => {
-    await request(app).post('/api/settings/resume-template').attach('file', Buffer.from('Jane Doe'), 'resume.txt');
+    fs.writeFileSync(resumeTemplatePathFor('txt'), 'Jane Doe');
     const response = await request(app).post('/api/postings/999/adapt-resume');
     expect(response.status).toBe(404);
   });
@@ -199,7 +212,7 @@ describe('POST /api/postings/:id/adapt-resume', () => {
 
 describe('GET /api/postings/:id/adapted-resume', () => {
   afterEach(() => {
-    fs.rmSync(RESUME_TEMPLATE_DIR, { recursive: true, force: true });
+    removeResumeTemplates();
     fs.rmSync(ADAPTED_RESUMES_DIR, { recursive: true, force: true });
   });
 
@@ -220,6 +233,77 @@ describe('GET /api/postings/:id/adapted-resume', () => {
   it('returns 404 when no adapted resume exists yet', async () => {
     const posting = await createPostingWithTemplate();
     const response = await request(app).get(`/api/postings/${posting.id}/adapted-resume`);
+    expect(response.status).toBe(404);
+  });
+});
+
+describe('applied CV upload and download', () => {
+  afterEach(() => {
+    fs.rmSync(APPLIED_CVS_DIR, { recursive: true, force: true });
+  });
+
+  async function createPosting() {
+    const title = await createTitle('Product Manager');
+    configureApiKey();
+    vi.mocked(searchJobPostings).mockResolvedValue([
+      { postingTitle: 'Senior PM', url: 'https://example.com/job/1' }
+    ]);
+    await request(app).post(`/api/position-titles/${title.id}/search`);
+    const [posting] = (await request(app).get(`/api/position-titles/${title.id}/postings`)).body;
+    return posting;
+  }
+
+  it('uploads a CV and marks the posting Applied', async () => {
+    const posting = await createPosting();
+
+    const response = await request(app)
+      .post(`/api/postings/${posting.id}/applied-cv`)
+      .attach('file', Buffer.from('submitted cv'), 'my-cv.txt');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ status: 'Applied', appliedCvOriginalName: 'my-cv.txt' });
+  });
+
+  it('rejects an unsupported format and leaves the status unchanged', async () => {
+    const posting = await createPosting();
+
+    const response = await request(app)
+      .post(`/api/postings/${posting.id}/applied-cv`)
+      .attach('file', Buffer.from('nope'), 'my-cv.pages');
+
+    expect(response.status).toBe(400);
+    const [current] = (await request(app).get(`/api/position-titles/${posting.positionTitleId}/postings`)).body;
+    expect(current.status).toBe('New');
+  });
+
+  it('returns 400 when no file is attached', async () => {
+    const posting = await createPosting();
+    const response = await request(app).post(`/api/postings/${posting.id}/applied-cv`);
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 404 for a missing posting', async () => {
+    const response = await request(app)
+      .post('/api/postings/999/applied-cv')
+      .attach('file', Buffer.from('cv'), 'my-cv.txt');
+    expect(response.status).toBe(404);
+  });
+
+  it('downloads the uploaded CV under its original filename', async () => {
+    const posting = await createPosting();
+    await request(app)
+      .post(`/api/postings/${posting.id}/applied-cv`)
+      .attach('file', Buffer.from('submitted cv'), 'my-cv.txt');
+
+    const response = await request(app).get(`/api/postings/${posting.id}/applied-cv`);
+    expect(response.status).toBe(200);
+    expect(response.headers['content-disposition']).toContain('my-cv.txt');
+    expect(response.text).toBe('submitted cv');
+  });
+
+  it('returns 404 when downloading before any CV was uploaded', async () => {
+    const posting = await createPosting();
+    const response = await request(app).get(`/api/postings/${posting.id}/applied-cv`);
     expect(response.status).toBe(404);
   });
 });

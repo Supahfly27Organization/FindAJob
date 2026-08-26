@@ -23,4 +23,5 @@ export interface Posting {
   status: PostingStatus;
   adaptedResumePath: string | null;
   appliedCvPath: string | null;
+  appliedCvOriginalName: string | null;
 }

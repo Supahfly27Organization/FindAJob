@@ -29,16 +29,16 @@ PK: `id` (`INTEGER`). A single job posting found by a search, linked to the titl
 | publishedDate | string \| null | `postings.published_date` | As reported by the search; unparseable/missing values are not treated as stale |
 | foundAt | string (ISO datetime) | `postings.found_at` | Set once, at insert time |
 | viewed | boolean | `postings.viewed` (`INTEGER` 0/1) | Set `true` only via "Open"; never implies a status change |
-| status | `'New' \| 'Applied' \| 'In Progress' \| 'Rejected'` | `postings.status` | DB `CHECK` constraint; app-level writes via this plan's endpoint reject `'Applied'` (see Key decisions) |
-| adaptedResumePath | string \| null | `postings.adapted_resume_path` | Set by Plan 3 (resume adaptation) |
-| appliedCvPath | string \| null | `postings.applied_cv_path` | Set by Plan 4 (Applied CV upload) |
+| status | `'New' \| 'Applied' \| 'In Progress' \| 'Rejected'` | `postings.status` | DB `CHECK` constraint; `PUT /api/postings/:id/status` rejects `'Applied'` — that value is only ever written by the applied-CV upload (see Key decisions) |
+| adaptedResumePath | string \| null | `postings.adapted_resume_path` | The AI-adapted draft (Plan 3), at `ADAPTED_RESUMES_DIR/posting-<id>.<format>` |
+| appliedCvPath | string \| null | `postings.applied_cv_path` | The CV actually submitted (Plan 4), at `APPLIED_CVS_DIR/posting-<id>.<ext>`; set together with `status = 'Applied'`, and kept if the status later moves off Applied |
+| appliedCvOriginalName | string \| null | `postings.applied_cv_original_name` | The filename as uploaded — used as the download filename and shown in the replace warning |
 
 ## ResumeTemplate
 
-Not a dedicated table — stored as three key/value rows in `settings`, the same pattern as the OpenAI key. Exactly one active template at a time (Story 4.1).
+Not persisted at all — it is just a file the user keeps at the repo root, resolved fresh on every use by `resumeTemplateService.getResumeTemplateInfo()` (returns `null` when absent).
 
-| Property | Type | Settings key | Notes |
+| Property | Type | Source | Notes |
 |---|---|---|---|
-| path | string | `resumeTemplatePath` | Always `RESUME_TEMPLATE_DIR/template.<format>`; overwritten (old file deleted) on re-upload |
-| originalName | string | `resumeTemplateOriginalName` | The filename as uploaded, shown back to the user |
-| format | `'docx' \| 'pdf' \| 'txt' \| 'md'` | `resumeTemplateFormat` | Drives extraction/generation and the adapted resume's output extension |
+| path | string | `Resume.<format>` at the repo root | First match wins in `RESUME_TEMPLATE_FORMATS` order (`docx`, `pdf`, `txt`, `md`), so `.docx` beats the others |
+| format | `'docx' \| 'pdf' \| 'txt' \| 'md'` | the file's extension | Drives extraction/generation and the adapted resume's output extension |

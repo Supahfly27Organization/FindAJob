@@ -1,24 +1,23 @@
 import path from 'node:path';
 import { ValidationError, UpstreamError } from '../errors.js';
-import { getOpenAiKey } from './settingsService.js';
 import { getResumeTemplateInfo } from './resumeTemplateService.js';
 import { getPostingById, setAdaptedResumePath } from './postingService.js';
 import { extractResumeText } from './resumeExtractionService.js';
 import { generateResumeDocument } from './resumeGenerationService.js';
 import { adaptResumeText } from './openaiClient.js';
-import { ADAPTED_RESUMES_DIR } from '../config.js';
+import { ADAPTED_RESUMES_DIR, getOpenAiKey } from '../config.js';
 
 export async function adaptResumeForPosting(db, postingId, { adaptResume = adaptResumeText } = {}) {
   const posting = getPostingById(db, postingId);
 
-  const apiKey = getOpenAiKey(db);
+  const apiKey = getOpenAiKey();
   if (!apiKey) {
-    throw new ValidationError('Configure your OpenAI API key in Settings before adapting your resume.');
+    throw new ValidationError('Set OPENAI_API_KEY in the .env file at the project root, then restart the app.');
   }
 
-  const template = getResumeTemplateInfo(db);
+  const template = getResumeTemplateInfo();
   if (!template) {
-    throw new ValidationError('Configure your resume template in Settings before adapting your resume.');
+    throw new ValidationError('Add your resume as Resume.docx in the project root before adapting your resume.');
   }
 
   const templateText = await extractResumeText(template.path, template.format);
@@ -29,7 +28,7 @@ export async function adaptResumeForPosting(db, postingId, { adaptResume = adapt
   } catch (error) {
     console.error('[resume-adaptation] OpenAI call failed for posting', postingId, error);
     if (error?.status === 401) {
-      throw new ValidationError('Your OpenAI API key was rejected. Update it in Settings.');
+      throw new ValidationError('Your OpenAI API key was rejected. Update OPENAI_API_KEY in .env and restart the app.');
     }
     throw new UpstreamError('Resume adaptation failed. Please try again.');
   }

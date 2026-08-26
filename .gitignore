@@ -469,7 +469,7 @@ postgres/
 # Server data directory
 server/data/
 
-# Personal resume template (fixed local path, never shared)
-/Resume.docx
+# Personal resume template (fixed local path, never shared) — .docx/.pdf/.txt/.md
+/Resume.*
 
 .superpowers/

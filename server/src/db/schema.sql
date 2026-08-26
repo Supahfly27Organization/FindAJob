@@ -21,10 +21,6 @@ CREATE TABLE IF NOT EXISTS postings (
   viewed INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'New' CHECK (status IN ('New', 'Applied', 'In Progress', 'Rejected')),
   adapted_resume_path TEXT,
-  applied_cv_path TEXT
-);
-
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT
+  applied_cv_path TEXT,
+  applied_cv_original_name TEXT
 );
